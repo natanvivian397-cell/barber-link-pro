@@ -25,12 +25,12 @@ export const Route = createFileRoute("/agendar")({
 
   head: () => ({
     meta: [
-      { title: "Agendar horário — The Brother's Barber" },
+      { title: "Agendar horário — Barbearia Bom Jesus" },
       {
         name: "description",
-        content: "Escolha serviço, dia e horário e confirme seu agendamento na The Brother's Barber.",
+        content: "Escolha serviço, dia e horário e confirme seu agendamento na Barbearia Bom Jesus.",
       },
-      { property: "og:title", content: "Agendar horário — The Brother's Barber" },
+      { property: "og:title", content: "Agendar horário — Barbearia Bom Jesus" },
       {
         property: "og:description",
         content: "Escolha serviço, dia e horário e confirme seu agendamento.",

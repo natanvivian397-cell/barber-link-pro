@@ -78,10 +78,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "The Brother's Barber — Agendamento online" },
+      { title: "Barbearia Bom Jesus — Agendamento online" },
       {
         name: "description",
-        content: "Agende seu corte, barba ou pigmentação na The Brother's Barber em poucos cliques.",
+        content: "Agende seu corte, barba ou pigmentação na Barbearia Bom Jesus em poucos cliques.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

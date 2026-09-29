@@ -8,13 +8,13 @@ import { formatBRL, type Service } from "@/lib/booking";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "The Brother's Barber — Agende seu horário" },
+      { title: "Barbearia Bom Jesus — Agende seu horário" },
       {
         name: "description",
         content:
-          "Escolha o serviço, veja o valor e agende seu horário na The Brother's Barber em poucos cliques.",
+          "Escolha o serviço, veja o valor e agende seu horário na Barbearia Bom Jesus em poucos cliques.",
       },
-      { property: "og:title", content: "The Brother's Barber — Agende seu horário" },
+      { property: "og:title", content: "Barbearia Bom Jesus — Agende seu horário" },
       {
         property: "og:description",
         content: "Corte, barba, pigmentação, platinado e mais. Agendamento online em poucos cliques.",

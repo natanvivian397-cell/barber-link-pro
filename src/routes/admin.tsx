@@ -19,13 +19,13 @@ export const Route = createFileRoute("/admin")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Painel — The Brother's Barber" },
+      { title: "Painel — Barbearia Bom Jesus" },
       { name: "description", content: "Painel da barbearia com os agendamentos em tempo real." },
       { name: "robots", content: "noindex" },
       { name: "theme-color", content: "#121214" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "Painel Barber" },
-      { property: "og:title", content: "Painel — The Brother's Barber" },
+      { property: "og:title", content: "Painel — Barbearia Bom Jesus" },
       { property: "og:description", content: "Agendamentos em tempo real da barbearia." },
     ],
     links: [
