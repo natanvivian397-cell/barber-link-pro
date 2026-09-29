@@ -6,14 +6,18 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
 import {
+  addDaysISO,
+  availableSlots,
   buildSlots,
   formatBRL,
   formatDateBR,
   todayISO,
   weekdayOfISO,
+  WEEKDAY_NAMES,
   type ScheduleDay,
   type Barber,
   type Service,
+  type Taken,
 } from "@/lib/booking";
 
 type SearchParams = { servico: string | undefined };
@@ -96,15 +100,25 @@ function Agendar() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("booking_time, status")
+        .select("booking_time, duration_min, status")
         .eq("booking_date", date)
         .eq("barber_id", barberId!);
       if (error) throw error;
-      return (data ?? [])
-        .filter((b) => b.status !== "cancelado")
-        .map((b) => b.booking_time as string);
+      return (data ?? []).filter((b) => b.status !== "cancelado") as Taken[];
     },
   });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("bookings-live-agendar")
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => {
+        refetchTaken();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetchTaken]);
 
   const { data: schedule, refetch: refetchSchedule } = useQuery({
     queryKey: ["schedule"],
@@ -132,7 +146,15 @@ function Agendar() {
   }, [refetchSchedule]);
 
   const day = schedule?.find((d) => d.weekday === weekdayOfISO(date));
-  const slots = buildSlots(day);
+  const selectedService = services?.find((s) => s.id === serviceId);
+  const slots = barberId
+    ? availableSlots(day, selectedService?.duration_min ?? 30, taken ?? [], date)
+    : buildSlots(day);
+  const days = Array.from({ length: 14 }, (_, i) => addDaysISO(todayISO(), i));
+
+  useEffect(() => {
+    if (time && barberId && !slots.includes(time)) setTime(null);
+  }, [slots.join(","), time, barberId]);
 
   const selected = services?.find((s) => s.id === serviceId);
 
