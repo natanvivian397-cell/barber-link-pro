@@ -5,7 +5,7 @@ export function BrandHeader({ back }: { back?: boolean }) {
   return (
     <header className="flex items-center justify-between px-6 pt-8 pb-2">
       <Link to="/" className="block">
-        <img src={logo.url} alt="Barbearia Bom Jesus" className="h-14 w-auto" />
+        <img src={logo.url} alt="Barbearia Bom Jesus" className="h-20 w-auto" />
       </Link>
       {back ? (
         <Link

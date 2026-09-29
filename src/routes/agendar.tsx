@@ -52,7 +52,7 @@ function Agendar() {
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState<null | { time: string; date: string; service: string }>(null);
 
-  const { data: services } = useQuery({
+  const { data: services, refetch: refetchServices } = useQuery({
     queryKey: ["services"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -64,6 +64,18 @@ function Agendar() {
       return data as Service[];
     },
   });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("services-live-agendar")
+      .on("postgres_changes", { event: "*", schema: "public", table: "services" }, () => {
+        refetchServices();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetchServices]);
 
   const { data: barbers } = useQuery({
     queryKey: ["barbers"],
