@@ -25,7 +25,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { data: services, isLoading } = useQuery({
+  const { data: services, isLoading, refetch: refetchServices } = useQuery({
     queryKey: ["services"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -37,6 +37,18 @@ function Index() {
       return data as Service[];
     },
   });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("services-live-home")
+      .on("postgres_changes", { event: "*", schema: "public", table: "services" }, () => {
+        refetchServices();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetchServices]);
 
   return (
     <div className="min-h-screen pb-28">
