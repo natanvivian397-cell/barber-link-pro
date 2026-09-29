@@ -12,6 +12,7 @@ export type Barber = { id: string; name: string; active: boolean; sort_order: nu
 export type Booking = {
   id: string;
   barber_id: string | null;
+  duration_min: number;
   customer_name: string;
   customer_phone: string;
   service_name: string;
@@ -68,6 +69,49 @@ export function buildSlots(day: ScheduleDay | undefined): string[] {
     for (let t = start; t + step <= end; t += step) slots.push(toHHMM(t));
   }
   return Array.from(new Set(slots)).sort();
+}
+
+export type Taken = { booking_time: string; duration_min: number };
+
+/** Horários livres considerando a duração do serviço e os agendamentos existentes. */
+export function availableSlots(
+  day: ScheduleDay | undefined,
+  duration: number,
+  taken: Taken[],
+  dateISO: string,
+): string[] {
+  if (!day || !day.is_open) return [];
+  const step = Math.max(5, day.slot_min || 30);
+  const dur = Math.max(5, duration || step);
+  const busy = taken.map((t) => {
+    const s = toMinutes(t.booking_time);
+    return [s, s + (t.duration_min || 30)] as const;
+  });
+  let minStart = -1;
+  if (dateISO === todayISO()) {
+    const n = new Date();
+    minStart = n.getHours() * 60 + n.getMinutes();
+  }
+  const out: string[] = [];
+  const ranges: [string, string][] = [
+    [day.morning_start, day.morning_end],
+    [day.afternoon_start, day.afternoon_end],
+  ];
+  for (const [from, to] of ranges) {
+    const start = toMinutes(from);
+    const end = toMinutes(to);
+    for (let t = start; t + dur <= end; t += step) {
+      if (t <= minStart) continue;
+      if (busy.some(([s, e]) => s < t + dur && e > t)) continue;
+      out.push(toHHMM(t));
+    }
+  }
+  return Array.from(new Set(out)).sort();
+}
+
+export function addDaysISO(iso: string, n: number) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(Date.UTC(y ?? 2000, (m ?? 1) - 1, (d ?? 1) + n)).toISOString().slice(0, 10);
 }
 
 export function weekdayOfISO(iso: string) {
