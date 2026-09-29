@@ -1,0 +1,1 @@
+ALTER PUBLICATION supabase_realtime ADD TABLE public.bookings, public.services, public.barbers, public.schedule_settings;
