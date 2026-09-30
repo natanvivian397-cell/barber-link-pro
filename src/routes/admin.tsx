@@ -37,21 +37,27 @@ function ServicesEditor() {
     };
   }, []);
 
-  async function update(id: string, patch: Record<string, unknown>) {
+  async function update(id: string, patch: { name?: string; price?: number; duration_min?: number; active?: boolean }) {
     const { error } = await supabase.from("services").update(patch).eq("id", id);
     if (error) toast.error("Não foi possível salvar.");
     load();
   }
   async function add() {
     const price = Number(n.price.replace(",", "."));
-    if (!n.name.trim() || !(price >= 0)) return toast.error("Informe nome e preço.");
+    if (!n.name.trim() || !(price >= 0)) {
+      toast.error("Informe nome e preço.");
+      return;
+    }
     const { error } = await supabase.from("services").insert({
       name: n.name.trim(),
       price,
       duration_min: Number(n.duration) || 30,
       sort_order: items.length + 1,
     });
-    if (error) return toast.error("Não foi possível cadastrar.");
+    if (error) {
+      toast.error("Não foi possível cadastrar.");
+      return;
+    }
     setN({ name: "", price: "", duration: "30" });
     load();
   }
