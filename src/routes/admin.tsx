@@ -709,7 +709,7 @@ function Panel() {
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold">{b.booking_time}</p>
-                  <p className="text-xs text-muted-foreground">{formatDateBR(b.booking_date)}</p>
+                  <p className="text-xs text-muted-foreground">{b.duration_min} min</p>
                 </div>
               </div>
 
@@ -733,7 +733,7 @@ function Panel() {
                 </span>
                 <span className="text-sm font-semibold">R$ {formatBRL(b.price)}</span>
                 <a
-                  href={`https://wa.me/55${b.customer_phone.replace(/\D/g, "")}`}
+                  href={`https://wa.me/55${b.customer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Olá ${b.customer_name}! Aqui é da Barbearia Bom Jesus, sobre seu horário de ${formatDateBR(b.booking_date)} às ${b.booking_time} (${b.service_name}).`)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="ml-auto flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium"
@@ -766,7 +766,7 @@ function Panel() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setStatus(b.id, "cancelado")}
+                      onClick={() => cancel(b)}
                       className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground"
                     >
                       <X className="h-3.5 w-3.5" /> Cancelar
