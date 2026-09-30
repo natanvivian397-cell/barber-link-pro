@@ -7,13 +7,139 @@ import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
 import {
   WEEKDAY_NAMES,
+  addDaysISO,
   formatBRL,
   formatDateBR,
   todayISO,
+  weekdayOfISO,
   type Barber,
   type Booking,
   type ScheduleDay,
+  type Service,
 } from "@/lib/booking";
+
+function ServicesEditor() {
+  const [items, setItems] = useState<(Service & { active: boolean })[]>([]);
+  const [n, setN] = useState({ name: "", price: "", duration: "30" });
+
+  async function load() {
+    const { data } = await supabase.from("services").select("*").order("sort_order");
+    setItems((data ?? []) as any);
+  }
+  useEffect(() => {
+    load();
+    const ch = supabase
+      .channel("services-admin")
+      .on("postgres_changes", { event: "*", schema: "public", table: "services" }, () => load())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, []);
+
+  async function update(id: string, patch: { name?: string; price?: number; duration_min?: number; active?: boolean }) {
+    const { error } = await supabase.from("services").update(patch).eq("id", id);
+    if (error) toast.error("Não foi possível salvar.");
+    load();
+  }
+  async function add() {
+    const price = Number(n.price.replace(",", "."));
+    if (!n.name.trim() || !(price >= 0)) {
+      toast.error("Informe nome e preço.");
+      return;
+    }
+    const { error } = await supabase.from("services").insert({
+      name: n.name.trim(),
+      price,
+      duration_min: Number(n.duration) || 30,
+      sort_order: items.length + 1,
+    });
+    if (error) {
+      toast.error("Não foi possível cadastrar.");
+      return;
+    }
+    setN({ name: "", price: "", duration: "30" });
+    load();
+  }
+  async function remove(s: Service) {
+    if (!confirm(`Remover o serviço ${s.name}?`)) return;
+    const { error } = await supabase.from("services").delete().eq("id", s.id);
+    if (error) await update(s.id, { active: false });
+    load();
+  }
+
+  const durations = [10, 15, 20, 30, 40, 45, 60, 75, 90, 120];
+  const cls = "rounded-xl border border-border bg-background px-3 py-2 text-sm";
+
+  return (
+    <div className="space-y-3 px-6 pt-6">
+      <p className="text-sm text-muted-foreground">
+        A duração define quanto tempo o horário fica reservado. Alterações aparecem na hora no site.
+      </p>
+      {items.map((s) => (
+        <div key={s.id} className="space-y-2 rounded-2xl border border-border bg-card p-3">
+          <input
+            defaultValue={s.name}
+            onBlur={(e) => e.target.value.trim() && e.target.value !== s.name && update(s.id, { name: e.target.value.trim() })}
+            className={`${cls} w-full`}
+          />
+          <div className="flex gap-2">
+            <input
+              defaultValue={String(s.price)}
+              inputMode="decimal"
+              onBlur={(e) => {
+                const v = Number(e.target.value.replace(",", "."));
+                if (v >= 0 && v !== s.price) update(s.id, { price: v });
+              }}
+              className={`${cls} w-24`}
+            />
+            <select
+              value={s.duration_min}
+              onChange={(e) => update(s.id, { duration_min: Number(e.target.value) })}
+              className={`${cls} flex-1`}
+            >
+              {Array.from(new Set([...durations, s.duration_min])).sort((a, b) => a - b).map((m) => (
+                <option key={m} value={m}>{m} min</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => update(s.id, { active: !s.active })}
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold ${
+                s.active ? "bg-primary text-primary-foreground" : "border border-border text-muted-foreground"
+              }`}
+            >
+              {s.active ? "Ativo" : "Oculto"}
+            </button>
+            <button
+              type="button"
+              onClick={() => remove(s)}
+              className="ml-auto rounded-full border border-border px-4 py-1.5 text-xs text-muted-foreground"
+            >
+              Remover
+            </button>
+          </div>
+        </div>
+      ))}
+      <div className="space-y-2 rounded-2xl border border-dashed border-border p-3">
+        <input value={n.name} onChange={(e) => setN({ ...n, name: e.target.value })} placeholder="Novo serviço" className={`${cls} w-full`} />
+        <div className="flex gap-2">
+          <input value={n.price} onChange={(e) => setN({ ...n, price: e.target.value })} inputMode="decimal" placeholder="R$" className={`${cls} w-24`} />
+          <select value={n.duration} onChange={(e) => setN({ ...n, duration: e.target.value })} className={`${cls} flex-1`}>
+            {durations.map((m) => (
+              <option key={m} value={m}>{m} min</option>
+            ))}
+          </select>
+          <button type="button" onClick={add} className="flex items-center gap-1 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">
+            <Plus className="h-3.5 w-3.5" /> Adicionar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -368,8 +494,9 @@ function Panel() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [barberId, setBarberId] = useState<string>(() => localStorage.getItem("agenda_barber") ?? "");
-  const [filter, setFilter] = useState<"hoje" | "proximos" | "concluidos">("hoje");
-  const [tab, setTab] = useState<"agenda" | "horarios" | "barbeiros">("agenda");
+  const [filter, setFilter] = useState<"ativos" | "concluidos" | "cancelados">("ativos");
+  const [day, setDay] = useState(todayISO());
+  const [tab, setTab] = useState<"agenda" | "servicos" | "horarios" | "barbeiros">("agenda");
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -415,12 +542,16 @@ function Panel() {
 
   const today = todayISO();
   const list = useMemo(() => {
-    const mine = bookings.filter((b) => b.barber_id === barberId);
+    const mine = bookings.filter((b) => b.barber_id === barberId && b.booking_date === day);
     if (filter === "concluidos") return mine.filter((b) => b.status === "concluido");
-    const open = mine.filter((b) => b.status !== "concluido");
-    if (filter === "hoje") return open.filter((b) => b.booking_date === today);
-    return open.filter((b) => b.booking_date >= today);
-  }, [bookings, filter, today, barberId]);
+    if (filter === "cancelados") return mine.filter((b) => b.status === "cancelado");
+    return mine.filter((b) => b.status !== "concluido" && b.status !== "cancelado");
+  }, [bookings, filter, day, barberId]);
+
+  async function cancel(b: Booking) {
+    if (!confirm(`Cancelar o horário de ${b.customer_name} às ${b.booking_time}?`)) return;
+    await setStatus(b.id, "cancelado");
+  }
 
   async function setStatus(id: string, status: string) {
     const { error } = await supabase.from("bookings").update({ status }).eq("id", id);
@@ -494,7 +625,7 @@ function Panel() {
       </header>
 
       <div className="flex gap-2 px-6 pt-6">
-        {(["agenda", "horarios", "barbeiros"] as const).map((t) => (
+        {(["agenda", "servicos", "horarios", "barbeiros"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -506,7 +637,7 @@ function Panel() {
             }`}
           >
             {t === "horarios" ? <Clock className="h-3.5 w-3.5" /> : null}
-            {t === "agenda" ? "Agenda" : t === "horarios" ? "Horários" : "Barbeiros"}
+            {t === "agenda" ? "Agenda" : t === "servicos" ? "Serviços" : t === "horarios" ? "Horários" : "Barbeiros"}
           </button>
         ))}
       </div>
@@ -514,22 +645,52 @@ function Panel() {
       {tab === "horarios" ? <ScheduleEditor /> : null}
       {tab === "horarios" ? <InstallApp /> : null}
       {tab === "barbeiros" ? <BarbersEditor barbers={barbers} reload={loadBarbers} /> : null}
+      {tab === "servicos" ? <ServicesEditor /> : null}
 
       {tab === "agenda" ? (
         <>
-      <div className="flex gap-2 px-6 pt-6">
-        {(["hoje", "proximos", "concluidos"] as const).map((f) => (
+      <div className="flex gap-2 overflow-x-auto px-6 pt-6 pb-1">
+        {Array.from({ length: 10 }, (_, i) => addDaysISO(today, i - 1)).map((d) => {
+          const count = bookings.filter(
+            (b) => b.barber_id === barberId && b.booking_date === d && b.status !== "cancelado",
+          ).length;
+          return (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setDay(d)}
+              className={`flex w-16 shrink-0 flex-col items-center rounded-2xl border py-2 text-xs font-semibold ${
+                day === d
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground"
+              }`}
+            >
+              <span>{d === today ? "Hoje" : WEEKDAY_NAMES[weekdayOfISO(d)]?.slice(0, 3)}</span>
+              <span className="text-lg font-bold">{d.slice(8, 10)}</span>
+              <span className="opacity-70">{count} ag.</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-2 px-6 pt-3">
+        <input
+          type="date"
+          value={day}
+          onChange={(e) => e.target.value && setDay(e.target.value)}
+          className="rounded-xl border border-border bg-card px-3 py-2 text-xs"
+        />
+        {(["ativos", "concluidos", "cancelados"] as const).map((f) => (
           <button
             key={f}
             type="button"
             onClick={() => setFilter(f)}
-            className={`rounded-full px-4 py-2 text-xs font-semibold capitalize transition-colors ${
+            className={`rounded-full px-3 py-2 text-xs font-semibold transition-colors ${
               filter === f
                 ? "bg-primary text-primary-foreground"
                 : "border border-border bg-card text-muted-foreground"
             }`}
           >
-            {f === "proximos" ? "próximos" : f === "concluidos" ? "concluídos" : f}
+            {f === "ativos" ? "Ativos" : f === "concluidos" ? "Finalizados" : "Cancelados"}
           </button>
         ))}
       </div>
@@ -554,7 +715,7 @@ function Panel() {
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold">{b.booking_time}</p>
-                  <p className="text-xs text-muted-foreground">{formatDateBR(b.booking_date)}</p>
+                  <p className="text-xs text-muted-foreground">{b.duration_min} min</p>
                 </div>
               </div>
 
@@ -578,7 +739,7 @@ function Panel() {
                 </span>
                 <span className="text-sm font-semibold">R$ {formatBRL(b.price)}</span>
                 <a
-                  href={`https://wa.me/55${b.customer_phone.replace(/\D/g, "")}`}
+                  href={`https://wa.me/55${b.customer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Olá ${b.customer_name}! Aqui é da Barbearia Bom Jesus, sobre seu horário de ${formatDateBR(b.booking_date)} às ${b.booking_time} (${b.service_name}).`)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="ml-auto flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium"
@@ -611,7 +772,7 @@ function Panel() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setStatus(b.id, "cancelado")}
+                      onClick={() => cancel(b)}
                       className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground"
                     >
                       <X className="h-3.5 w-3.5" /> Cancelar

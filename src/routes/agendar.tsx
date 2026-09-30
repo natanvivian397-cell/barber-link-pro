@@ -258,7 +258,9 @@ function Agendar() {
                     : "border-border bg-card text-foreground"
                 }`}
               >
-                <span className="truncate text-sm font-semibold">{s.name}</span>
+                <span className="truncate text-sm font-semibold">
+                  {s.name} <span className="font-normal opacity-70">· {s.duration_min} min</span>
+                </span>
                 <span className="shrink-0 text-sm font-bold">R$ {formatBRL(s.price)}</span>
               </button>
             );
@@ -289,30 +291,55 @@ function Agendar() {
         </div>
       </section>
 
-      <section className="px-6 pt-8">
-        <p className="eyebrow">2. Data</p>
-        <input
-          type="date"
-          value={date}
-          min={todayISO()}
-          onChange={(e) => {
-            setDate(e.target.value);
-            setTime(null);
-          }}
-          className="mt-3 w-full rounded-2xl border border-border bg-card px-5 py-3.5 text-sm font-semibold text-foreground outline-none focus:border-primary"
-        />
+      <section className="pt-8">
+        <p className="eyebrow px-6">2. Data</p>
+        <div className="mt-3 flex gap-2 overflow-x-auto px-6 pb-1">
+          {days.map((d) => {
+            const wd = weekdayOfISO(d);
+            const open = schedule?.find((s) => s.weekday === wd)?.is_open ?? true;
+            const active = d === date;
+            return (
+              <button
+                key={d}
+                type="button"
+                disabled={!open}
+                onClick={() => {
+                  setDate(d);
+                  setTime(null);
+                }}
+                className={`flex w-16 shrink-0 flex-col items-center rounded-2xl border py-2.5 text-xs font-semibold transition-colors ${
+                  active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : open
+                      ? "border-border bg-card text-foreground"
+                      : "border-border bg-muted text-muted-foreground opacity-50"
+                }`}
+              >
+                <span>{d === todayISO() ? "Hoje" : WEEKDAY_NAMES[wd]?.slice(0, 3)}</span>
+                <span className="text-lg font-bold">{d.slice(8, 10)}</span>
+                <span className="opacity-70">{d.slice(5, 7)}</span>
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       <section className="px-6 pt-8">
         <p className="eyebrow">3. Horário</p>
-        {slots.length === 0 ? (
+        {!barberId ? (
           <p className="mt-3 rounded-2xl border border-border bg-muted px-5 py-4 text-sm text-muted-foreground">
-            A barbearia não atende nesse dia. Escolha outra data.
+            Escolha o barbeiro para ver os horários livres.
+          </p>
+        ) : slots.length === 0 ? (
+          <p className="mt-3 rounded-2xl border border-border bg-muted px-5 py-4 text-sm text-muted-foreground">
+            {day?.is_open === false
+              ? "A barbearia não atende nesse dia. Escolha outra data."
+              : "Sem horários livres nesse dia. Escolha outra data."}
           </p>
         ) : null}
         <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
-          {slots.map((slot) => {
-            const busy = taken?.includes(slot);
+          {(barberId ? slots : []).map((slot) => {
+            const busy = false;
             const active = time === slot;
             return (
               <button
