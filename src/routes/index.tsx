@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, CalendarDays, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
+import { CatalogPhoto } from "@/components/CatalogPhoto";
 import { formatBRL, type Service } from "@/lib/booking";
 
 export const Route = createFileRoute("/")({
@@ -16,6 +17,8 @@ export const Route = createFileRoute("/")({
           "Escolha o serviço, veja o valor e agende seu horário na Barbearia Bom Jesus em poucos cliques.",
       },
       { property: "og:title", content: "Barbearia Bom Jesus — Agende seu horário" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:description",
         content: "Corte, barba, pigmentação, platinado e mais. Agendamento online em poucos cliques.",
@@ -81,7 +84,8 @@ function Index() {
                   search={{ servico: s.id }}
                   className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card px-5 py-4 shadow-card transition-transform active:scale-[0.99]"
                 >
-                  <div className="min-w-0">
+                  {s.photo_path ? <CatalogPhoto path={s.photo_path} alt={s.name} className="h-14 w-14 shrink-0 rounded-md object-cover" /> : null}
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-[15px] font-semibold text-foreground">{s.name}</p>
                     <p className="truncate text-[13px] text-muted-foreground">{s.description}</p>
                   </div>

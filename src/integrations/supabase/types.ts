@@ -20,6 +20,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          photo_path: string | null
           sort_order: number
         }
         Insert: {
@@ -27,6 +28,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          photo_path?: string | null
           sort_order?: number
         }
         Update: {
@@ -34,6 +36,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          photo_path?: string | null
           sort_order?: number
         }
         Relationships: []
@@ -145,6 +148,7 @@ export type Database = {
           duration_min: number
           id: string
           name: string
+          photo_path: string | null
           price: number
           sort_order: number
         }
@@ -155,6 +159,7 @@ export type Database = {
           duration_min?: number
           id?: string
           name: string
+          photo_path?: string | null
           price: number
           sort_order?: number
         }
@@ -165,6 +170,7 @@ export type Database = {
           duration_min?: number
           id?: string
           name?: string
+          photo_path?: string | null
           price?: number
           sort_order?: number
         }

@@ -5,6 +5,7 @@ import { Check, CheckCheck, Clock, Download, LogOut, Loader2, Phone, Plus, Share
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
+import { CatalogPhotoUpload } from "@/components/CatalogPhoto";
 import {
   WEEKDAY_NAMES,
   addDaysISO,
@@ -78,6 +79,7 @@ function ServicesEditor() {
       </p>
       {items.map((s) => (
         <div key={s.id} className="space-y-2 rounded-2xl border border-border bg-card p-3">
+          <CatalogPhotoUpload table="services" id={s.id} path={s.photo_path} onSaved={load} />
           <input
             defaultValue={s.name}
             onBlur={(e) => e.target.value.trim() && e.target.value !== s.name && update(s.id, { name: e.target.value.trim() })}
@@ -153,6 +155,8 @@ export const Route = createFileRoute("/admin")({
       { name: "apple-mobile-web-app-title", content: "Painel Barber" },
       { property: "og:title", content: "Painel — Barbearia Bom Jesus" },
       { property: "og:description", content: "Agendamentos em tempo real da barbearia." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "manifest", href: "/manifest.webmanifest" },
@@ -454,7 +458,9 @@ function BarbersEditor({ barbers, reload }: { barbers: Barber[]; reload: () => v
         Barbeiros ativos aparecem no site para o cliente escolher.
       </p>
       {barbers.map((b) => (
-        <div key={b.id} className="flex items-center gap-2 rounded-2xl border border-border bg-card p-3">
+        <div key={b.id} className="space-y-3 rounded-2xl border border-border bg-card p-3">
+          <CatalogPhotoUpload table="barbers" id={b.id} path={b.photo_path} onSaved={reload} />
+          <div className="flex items-center gap-2">
           <input
             defaultValue={b.name}
             onBlur={(e) => e.target.value !== b.name && rename(b.id, e.target.value)}
@@ -469,6 +475,7 @@ function BarbersEditor({ barbers, reload }: { barbers: Barber[]; reload: () => v
           >
             {b.active ? "Ativo" : "Inativo"}
           </button>
+          </div>
         </div>
       ))}
       <div className="flex gap-2">
@@ -494,8 +501,8 @@ function Panel() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [barberId, setBarberId] = useState<string>(() => localStorage.getItem("agenda_barber") ?? "");
-  const [filter, setFilter] = useState<"ativos" | "concluidos" | "cancelados">("ativos");
-  const [day, setDay] = useState(todayISO());
+  const [filter, setFilter] = useState<"todos" | "ativos" | "concluidos" | "cancelados">("ativos");
+  const [day, setDay] = useState<string | null>(todayISO());
   const [tab, setTab] = useState<"agenda" | "servicos" | "horarios" | "barbeiros">("agenda");
   const [loading, setLoading] = useState(true);
 
@@ -542,7 +549,8 @@ function Panel() {
 
   const today = todayISO();
   const list = useMemo(() => {
-    const mine = bookings.filter((b) => b.barber_id === barberId && b.booking_date === day);
+    const mine = bookings.filter((b) => b.barber_id === barberId && (day === null || b.booking_date === day));
+    if (filter === "todos") return mine;
     if (filter === "concluidos") return mine.filter((b) => b.status === "concluido");
     if (filter === "cancelados") return mine.filter((b) => b.status === "cancelado");
     return mine.filter((b) => b.status !== "concluido" && b.status !== "cancelado");
@@ -650,6 +658,7 @@ function Panel() {
       {tab === "agenda" ? (
         <>
       <div className="flex gap-2 overflow-x-auto px-6 pt-6 pb-1">
+        <button type="button" onClick={() => setDay(null)} className={`flex w-16 shrink-0 items-center justify-center rounded-2xl border text-xs font-semibold ${day === null ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-foreground"}`}>Todos</button>
         {Array.from({ length: 10 }, (_, i) => addDaysISO(today, i - 1)).map((d) => {
           const count = bookings.filter(
             (b) => b.barber_id === barberId && b.booking_date === d && b.status !== "cancelado",
@@ -675,11 +684,11 @@ function Panel() {
       <div className="flex items-center gap-2 px-6 pt-3">
         <input
           type="date"
-          value={day}
+          value={day ?? ""}
           onChange={(e) => e.target.value && setDay(e.target.value)}
-          className="rounded-xl border border-border bg-card px-3 py-2 text-xs"
+          className="min-w-0 rounded-xl border border-border bg-card px-3 py-2 text-xs"
         />
-        {(["ativos", "concluidos", "cancelados"] as const).map((f) => (
+        {(["todos", "ativos", "concluidos", "cancelados"] as const).map((f) => (
           <button
             key={f}
             type="button"
@@ -690,7 +699,7 @@ function Panel() {
                 : "border border-border bg-card text-muted-foreground"
             }`}
           >
-            {f === "ativos" ? "Ativos" : f === "concluidos" ? "Finalizados" : "Cancelados"}
+            {f === "todos" ? "Todos" : f === "ativos" ? "Ativos" : f === "concluidos" ? "Finalizados" : "Cancelados"}
           </button>
         ))}
       </div>
@@ -708,6 +717,7 @@ function Panel() {
               key={b.id}
               className="rounded-2xl border border-border bg-card p-5 shadow-card"
             >
+              {day === null ? <p className="mb-2 text-xs font-semibold text-muted-foreground">{formatDateBR(b.booking_date)}</p> : null}
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-base font-semibold">{b.customer_name}</p>

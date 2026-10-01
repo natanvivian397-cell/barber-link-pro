@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
+import { Button } from "@/components/ui/button";
+import { CatalogPhoto } from "@/components/CatalogPhoto";
+import logo from "@/assets/bom-jesus-logo.png.asset.json";
 import {
   addDaysISO,
   availableSlots,
@@ -13,7 +16,6 @@ import {
   formatDateBR,
   todayISO,
   weekdayOfISO,
-  WEEKDAY_NAMES,
   type ScheduleDay,
   type Barber,
   type Service,
@@ -35,6 +37,8 @@ export const Route = createFileRoute("/agendar")({
         content: "Escolha serviço, dia e horário e confirme seu agendamento na Barbearia Bom Jesus.",
       },
       { property: "og:title", content: "Agendar horário — Barbearia Bom Jesus" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:description",
         content: "Escolha serviço, dia e horário e confirme seu agendamento.",
@@ -81,7 +85,7 @@ function Agendar() {
     };
   }, [refetchServices]);
 
-  const { data: barbers } = useQuery({
+  const { data: barbers, refetch: refetchBarbers } = useQuery({
     queryKey: ["barbers"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -94,6 +98,13 @@ function Agendar() {
     },
   });
 
+  useEffect(() => {
+    const channel = supabase.channel("barbers-live-agendar")
+      .on("postgres_changes", { event: "*", schema: "public", table: "barbers" }, () => { refetchBarbers(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [refetchBarbers]);
+
   const { data: taken, refetch: refetchTaken } = useQuery({
     queryKey: ["taken", date, barberId],
     enabled: !!barberId,
@@ -102,7 +113,7 @@ function Agendar() {
         .from("bookings")
         .select("booking_time, duration_min, status")
         .eq("booking_date", date)
-        .eq("barber_id", barberId!);
+        .eq("barber_id", barberId ?? "");
       if (error) throw error;
       return (data ?? []).filter((b) => b.status !== "cancelado") as Taken[];
     },
@@ -155,6 +166,13 @@ function Agendar() {
   useEffect(() => {
     if (time && barberId && !slots.includes(time)) setTime(null);
   }, [slots.join(","), time, barberId]);
+
+  useEffect(() => {
+    if (barberId && barbers && !barbers.some((b) => b.id === barberId)) {
+      setBarberId(undefined);
+      setTime(null);
+    }
+  }, [barberId, barbers]);
 
   const selected = services?.find((s) => s.id === serviceId);
 
@@ -234,169 +252,66 @@ function Agendar() {
   }
 
   return (
-    <div className="min-h-screen pb-32">
-      <BrandHeader back />
-
-      <div className="px-6 pt-4">
-        <p className="eyebrow">Novo agendamento</p>
-        <h1 className="mt-2 text-3xl font-bold">Escolha seu horário</h1>
-      </div>
-
-      <section className="px-6 pt-8">
-        <p className="eyebrow">1. Serviço</p>
-        <div className="mt-3 space-y-2">
-          {services?.map((s) => {
-            const active = s.id === serviceId;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setServiceId(s.id)}
-                className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-5 py-3.5 text-left transition-colors ${
-                  active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card text-foreground"
-                }`}
-              >
-                <span className="truncate text-sm font-semibold">
-                  {s.name} <span className="font-normal opacity-70">· {s.duration_min} min</span>
-                </span>
-                <span className="shrink-0 text-sm font-bold">R$ {formatBRL(s.price)}</span>
-              </button>
-            );
-          })}
+    <div className="min-h-screen bg-background pb-12">
+      <main className="mx-auto max-w-2xl px-5 sm:px-8">
+        <div className="pt-10 text-center sm:pt-14">
+          <Link to="/" className="inline-block" aria-label="Barbearia Bom Jesus — início">
+            <img src={logo.url} alt="Barbearia Bom Jesus" className="mx-auto h-40 w-40 object-contain sm:h-48 sm:w-48" />
+          </Link>
+          <h1 className="mt-4 font-display text-xl font-semibold uppercase tracking-[0.28em] text-gold sm:text-2xl">Barbearia Bom Jesus</h1>
+          <p className="mt-3 text-xs uppercase tracking-[0.34em] text-foreground">Corte <span className="px-2 text-gold">•</span> Barba <span className="px-2 text-gold">•</span> Estilo</p>
         </div>
-      </section>
 
-      <section className="px-6 pt-8">
-        <p className="eyebrow">Barbeiro</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {barbers?.map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              onClick={() => {
-                setBarberId(b.id);
-                setTime(null);
-              }}
-              className={`rounded-full border px-5 py-2.5 text-sm font-semibold transition-colors ${
-                barberId === b.id
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-foreground"
-              }`}
-            >
-              {b.name}
-            </button>
-          ))}
-        </div>
-      </section>
+        <section className="mt-12">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">1. &nbsp; Selecione a data</h2>
+          <label className="mt-4 flex items-center rounded-full border border-border bg-card px-5 py-3 text-foreground focus-within:border-gold">
+            <span className="mr-3 text-xl text-gold" aria-hidden="true">▣</span>
+            <select aria-label="Selecionar data" value={date} onChange={(e) => { setDate(e.target.value); setTime(null); }} className="min-w-0 flex-1 cursor-pointer bg-transparent text-sm outline-none">
+              {days.map((d) => <option key={d} value={d} disabled={schedule?.find((s) => s.weekday === weekdayOfISO(d))?.is_open === false} className="bg-card text-foreground">{new Date(`${d}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}</option>)}
+            </select>
+          </label>
+        </section>
 
-      <section className="pt-8">
-        <p className="eyebrow px-6">2. Data</p>
-        <div className="mt-3 flex gap-2 overflow-x-auto px-6 pb-1">
-          {days.map((d) => {
-            const wd = weekdayOfISO(d);
-            const open = schedule?.find((s) => s.weekday === wd)?.is_open ?? true;
-            const active = d === date;
-            return (
-              <button
-                key={d}
-                type="button"
-                disabled={!open}
-                onClick={() => {
-                  setDate(d);
-                  setTime(null);
-                }}
-                className={`flex w-16 shrink-0 flex-col items-center rounded-2xl border py-2.5 text-xs font-semibold transition-colors ${
-                  active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : open
-                      ? "border-border bg-card text-foreground"
-                      : "border-border bg-muted text-muted-foreground opacity-50"
-                }`}
-              >
-                <span>{d === todayISO() ? "Hoje" : WEEKDAY_NAMES[wd]?.slice(0, 3)}</span>
-                <span className="text-lg font-bold">{d.slice(8, 10)}</span>
-                <span className="opacity-70">{d.slice(5, 7)}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+        <section className="mt-9">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">2. &nbsp; Escolha o barbeiro</h2>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {barbers?.map((b) => <Button key={b.id} type="button" variant="outline" onClick={() => { setBarberId(b.id); setTime(null); }} className={`h-auto gap-2 rounded-full border px-3 py-2 ${barberId === b.id ? "border-gold bg-gold/10 text-gold" : "border-border bg-card text-foreground"}`}>
+              {b.photo_path ? <CatalogPhoto path={b.photo_path} alt={b.name} className="h-8 w-8 rounded-full object-cover" /> : null}{b.name}
+            </Button>)}
+          </div>
+        </section>
 
-      <section className="px-6 pt-8">
-        <p className="eyebrow">3. Horário</p>
-        {!barberId ? (
-          <p className="mt-3 rounded-2xl border border-border bg-muted px-5 py-4 text-sm text-muted-foreground">
-            Escolha o barbeiro para ver os horários livres.
-          </p>
-        ) : slots.length === 0 ? (
-          <p className="mt-3 rounded-2xl border border-border bg-muted px-5 py-4 text-sm text-muted-foreground">
-            {day?.is_open === false
-              ? "A barbearia não atende nesse dia. Escolha outra data."
-              : "Sem horários livres nesse dia. Escolha outra data."}
-          </p>
-        ) : null}
-        <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
-          {(barberId ? slots : []).map((slot) => {
-            const busy = false;
-            const active = time === slot;
-            return (
-              <button
-                key={slot}
-                type="button"
-                disabled={busy}
-                onClick={() => setTime(slot)}
-                className={`rounded-xl border px-2 py-3 text-sm font-semibold transition-colors ${
-                  busy
-                    ? "cursor-not-allowed border-border bg-muted text-muted-foreground line-through"
-                    : active
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-foreground"
-                }`}
-              >
-                {slot}
-              </button>
-            );
-          })}
-        </div>
-      </section>
+        <section className="mt-9">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">3. &nbsp; Escolha o horário</h2>
+          {!barberId ? <p className="mt-4 text-sm text-muted-foreground">Escolha o barbeiro para ver os horários livres.</p> : slots.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">{day?.is_open === false ? "A barbearia não atende nesse dia. Escolha outra data." : "Sem horários livres nesse dia. Escolha outra data."}</p> : null}
+          <div className="mt-4 grid grid-cols-3 gap-2.5">
+            {(barberId ? slots : []).map((slot) => <Button key={slot} type="button" variant="outline" onClick={() => setTime(slot)} className={`h-12 rounded-full border text-sm font-medium ${time === slot ? "border-gold bg-gold/10 text-gold" : "border-border bg-card text-foreground"}`}>{slot}</Button>)}
+          </div>
+        </section>
 
-      <section className="space-y-3 px-6 pt-8">
-        <p className="eyebrow">4. Seus dados</p>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Seu nome"
-          className="w-full rounded-2xl border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-primary"
-        />
-        <input
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          inputMode="tel"
-          placeholder="WhatsApp (51) 9 9999-9999"
-          className="w-full rounded-2xl border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-primary"
-        />
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Observação (opcional)"
-          rows={3}
-          className="w-full resize-none rounded-2xl border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-primary"
-        />
-      </section>
+        <section className="mt-11">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">4. &nbsp; Selecione o serviço</h2>
+          <div className="mt-4 space-y-2">
+            {services?.map((s) => <Button key={s.id} type="button" variant="outline" onClick={() => setServiceId(s.id)} className={`h-auto min-h-14 w-full justify-start gap-3 rounded-full border px-4 py-2 text-left font-normal ${serviceId === s.id ? "border-gold bg-gold/10 text-gold" : "border-border bg-card text-foreground"}`}>
+              {s.photo_path ? <CatalogPhoto path={s.photo_path} alt={s.name} className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
+              <span className="min-w-0 flex-1 truncate">{s.name} <span className="text-xs text-muted-foreground">· {s.duration_min} min</span></span>
+              <span className="shrink-0">R$ {formatBRL(s.price)}</span>
+              <span aria-hidden="true" className={`ml-1 h-5 w-5 shrink-0 rounded-full border ${serviceId === s.id ? "border-gold bg-gold" : "border-muted-foreground"}`} />
+            </Button>)}
+          </div>
+        </section>
 
-      <div className="fixed inset-x-0 bottom-0 bg-gradient-to-t from-background via-background to-transparent px-6 pb-6 pt-8">
-        <button
-          type="button"
-          onClick={submit}
-          disabled={saving}
-          className="mx-auto flex w-full max-w-xl items-center justify-center gap-2 rounded-full bg-primary px-7 py-4 text-sm font-semibold tracking-[0.12em] text-primary-foreground shadow-float disabled:opacity-60"
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          CONFIRMAR AGENDAMENTO
-        </button>
-      </div>
+        <section className="mt-11 space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">5. &nbsp; Seus dados</h2>
+          <input aria-label="Seu nome" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" className="w-full rounded-full border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-gold" />
+          <input aria-label="WhatsApp" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="WhatsApp (51) 9 9999-9999" className="w-full rounded-full border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-gold" />
+          <textarea aria-label="Observação" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observação (opcional)" rows={2} className="w-full resize-none rounded-2xl border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-gold" />
+        </section>
+        <Button type="button" onClick={submit} disabled={saving} className="mt-7 h-14 w-full gap-3 rounded-full bg-gold text-sm font-semibold uppercase tracking-[0.15em] text-gold-foreground hover:bg-gold/90">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Confirmar agendamento <ArrowRight className="h-4 w-4" />
+        </Button>
+        <p className="mt-8 text-center text-xs uppercase tracking-[0.3em] text-gold">— &nbsp; Desde 2015 &nbsp; —</p>
+      </main>
     </div>
   );
 }

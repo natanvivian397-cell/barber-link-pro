@@ -1,5 +1,6 @@
 export type Service = {
   id: string;
+  photo_path: string | null;
   name: string;
   description: string | null;
   price: number;
@@ -7,7 +8,7 @@ export type Service = {
   sort_order: number;
 };
 
-export type Barber = { id: string; name: string; active: boolean; sort_order: number };
+export type Barber = { id: string; name: string; active: boolean; sort_order: number; photo_path: string | null };
 
 export type Booking = {
   id: string;
