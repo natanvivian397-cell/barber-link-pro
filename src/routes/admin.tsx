@@ -501,7 +501,7 @@ function Panel() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [barberId, setBarberId] = useState<string>(() => localStorage.getItem("agenda_barber") ?? "");
-  const [filter, setFilter] = useState<"ativos" | "concluidos" | "cancelados">("ativos");
+  const [filter, setFilter] = useState<"todos" | "ativos" | "concluidos" | "cancelados">("ativos");
   const [day, setDay] = useState<string | null>(todayISO());
   const [tab, setTab] = useState<"agenda" | "servicos" | "horarios" | "barbeiros">("agenda");
   const [loading, setLoading] = useState(true);
@@ -550,6 +550,7 @@ function Panel() {
   const today = todayISO();
   const list = useMemo(() => {
     const mine = bookings.filter((b) => b.barber_id === barberId && (day === null || b.booking_date === day));
+    if (filter === "todos") return mine;
     if (filter === "concluidos") return mine.filter((b) => b.status === "concluido");
     if (filter === "cancelados") return mine.filter((b) => b.status === "cancelado");
     return mine.filter((b) => b.status !== "concluido" && b.status !== "cancelado");
@@ -687,7 +688,7 @@ function Panel() {
           onChange={(e) => e.target.value && setDay(e.target.value)}
           className="min-w-0 rounded-xl border border-border bg-card px-3 py-2 text-xs"
         />
-        {(["ativos", "concluidos", "cancelados"] as const).map((f) => (
+        {(["todos", "ativos", "concluidos", "cancelados"] as const).map((f) => (
           <button
             key={f}
             type="button"
@@ -698,7 +699,7 @@ function Panel() {
                 : "border border-border bg-card text-muted-foreground"
             }`}
           >
-            {f === "ativos" ? "Ativos" : f === "concluidos" ? "Finalizados" : "Cancelados"}
+            {f === "todos" ? "Todos" : f === "ativos" ? "Ativos" : f === "concluidos" ? "Finalizados" : "Cancelados"}
           </button>
         ))}
       </div>
