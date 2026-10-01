@@ -16,7 +16,6 @@ import {
   formatDateBR,
   todayISO,
   weekdayOfISO,
-  WEEKDAY_NAMES,
   type ScheduleDay,
   type Barber,
   type Service,
@@ -266,18 +265,11 @@ function Agendar() {
         <section className="mt-12">
           <h2 className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">1. &nbsp; Selecione a data</h2>
           <label className="mt-4 flex items-center rounded-full border border-border bg-card px-5 py-3 text-foreground focus-within:border-gold">
-            <span className="mr-3 text-xl text-gold">▣</span>
-            <span className="flex-1 text-sm">{new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" })}</span>
-            <input type="date" aria-label="Selecionar data" min={days[0]} max={days[13]} value={date} onChange={(e) => { if (e.target.value) { setDate(e.target.value); setTime(null); } }} className="w-8 cursor-pointer bg-transparent text-gold accent-gold" />
+            <span className="mr-3 text-xl text-gold" aria-hidden="true">▣</span>
+            <select aria-label="Selecionar data" value={date} onChange={(e) => { setDate(e.target.value); setTime(null); }} className="min-w-0 flex-1 cursor-pointer bg-transparent text-sm outline-none">
+              {days.map((d) => <option key={d} value={d} disabled={schedule?.find((s) => s.weekday === weekdayOfISO(d))?.is_open === false} className="bg-card text-foreground">{new Date(`${d}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}</option>)}
+            </select>
           </label>
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
-            {days.map((d) => {
-              const open = schedule?.find((s) => s.weekday === weekdayOfISO(d))?.is_open ?? true;
-              return <Button key={d} type="button" variant="outline" disabled={!open} onClick={() => { setDate(d); setTime(null); }} className={`h-auto min-w-14 shrink-0 flex-col gap-0 rounded-full px-3 py-2 text-xs ${date === d ? "border-gold bg-gold/10 text-gold" : "border-border bg-card text-foreground"}`}>
-                <span>{d === todayISO() ? "Hoje" : WEEKDAY_NAMES[weekdayOfISO(d)]?.slice(0, 3)}</span><span>{d.slice(8, 10)}/{d.slice(5, 7)}</span>
-              </Button>;
-            })}
-          </div>
         </section>
 
         <section className="mt-9">
