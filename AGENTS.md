@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Catalog photos use a private Storage bucket with anonymous read policy and short-lived signed URLs; this allows visitor images while keeping uploads restricted to signed-in staff.

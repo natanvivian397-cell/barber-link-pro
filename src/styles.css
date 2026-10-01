@@ -38,6 +38,8 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-ring-offset-background: var(--background);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -51,6 +53,8 @@
 }
 
 :root {
+  --gold: oklch(0.82 0.105 80);
+  --gold-foreground: oklch(0.16 0.015 80);
   --radius: 0.9rem;
   --background: oklch(0.15 0.004 260);
   --foreground: oklch(0.98 0.003 95);
@@ -135,7 +139,7 @@
   h2,
   h3 {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
   }
 }
 
