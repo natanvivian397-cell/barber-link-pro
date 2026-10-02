@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790983301671,
+      "tag": "0000_barber_delete_set_null",
+      "breakpoints": true
+    }
+  ]
+}
