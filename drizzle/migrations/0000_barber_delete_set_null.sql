@@ -1,0 +1,2 @@
+ALTER TABLE public.bookings DROP CONSTRAINT bookings_barber_id_fkey;
+ALTER TABLE public.bookings ADD CONSTRAINT bookings_barber_id_fkey FOREIGN KEY (barber_id) REFERENCES public.barbers(id) ON DELETE SET NULL;
