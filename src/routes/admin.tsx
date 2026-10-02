@@ -451,6 +451,18 @@ function BarbersEditor({ barbers, reload }: { barbers: Barber[]; reload: () => v
     await supabase.from("barbers").update({ active: !b.active }).eq("id", b.id);
     reload();
   }
+  async function removeBarber(b: Barber) {
+    if (!confirm(`Excluir o barbeiro ${b.name}? Essa ação não pode ser desfeita.`)) return;
+    const { error } = await supabase.from("barbers").delete().eq("id", b.id);
+    if (error) {
+      toast.error("Não foi possível excluir.");
+      return;
+    }
+    if (b.photo_path) await supabase.storage.from("catalog-photos").remove([b.photo_path]);
+    if (localStorage.getItem("agenda_barber") === b.id) localStorage.removeItem("agenda_barber");
+    toast.success("Barbeiro excluído.");
+    reload();
+  }
 
   return (
     <div className="space-y-3 px-6 pt-6">
@@ -474,6 +486,14 @@ function BarbersEditor({ barbers, reload }: { barbers: Barber[]; reload: () => v
             }`}
           >
             {b.active ? "Ativo" : "Inativo"}
+          </button>
+          <button
+            type="button"
+            aria-label={`Excluir ${b.name}`}
+            onClick={() => removeBarber(b)}
+            className="rounded-full border border-border p-2 text-destructive transition-colors hover:bg-accent"
+          >
+            <X className="h-4 w-4" />
           </button>
           </div>
         </div>
