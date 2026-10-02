@@ -276,7 +276,7 @@ function Agendar() {
           <h2 className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">2. &nbsp; Escolha o barbeiro</h2>
           <div className="mt-4 flex flex-wrap gap-2">
             {barbers?.map((b) => <Button key={b.id} type="button" variant="outline" onClick={() => { setBarberId(b.id); setTime(null); }} className={`h-auto gap-2 rounded-full border px-3 py-2 ${barberId === b.id ? "border-gold bg-gold/10 text-gold" : "border-border bg-card text-foreground"}`}>
-              {b.photo_path ? <CatalogPhoto path={b.photo_path} alt={b.name} className="h-8 w-8 rounded-full object-cover" /> : null}{b.name}
+              {b.photo_path ? <CatalogPhoto path={b.photo_path} alt={b.name} className="h-11 w-11 rounded-full object-cover" /> : null}{b.name}
             </Button>)}
           </div>
         </section>
@@ -293,7 +293,7 @@ function Agendar() {
           <h2 className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">4. &nbsp; Selecione o serviço</h2>
           <div className="mt-4 space-y-2">
             {services?.map((s) => <Button key={s.id} type="button" variant="outline" onClick={() => setServiceId(s.id)} className={`h-auto min-h-14 w-full justify-start gap-3 rounded-full border px-4 py-2 text-left font-normal ${serviceId === s.id ? "border-gold bg-gold/10 text-gold" : "border-border bg-card text-foreground"}`}>
-              {s.photo_path ? <CatalogPhoto path={s.photo_path} alt={s.name} className="h-9 w-9 shrink-0 rounded-full object-cover" /> : null}
+              {s.photo_path ? <CatalogPhoto path={s.photo_path} alt={s.name} className="h-12 w-12 shrink-0 rounded-full object-cover" /> : null}
               <span className="min-w-0 flex-1 truncate">{s.name} <span className="text-xs text-muted-foreground">· {s.duration_min} min</span></span>
               <span className="shrink-0">R$ {formatBRL(s.price)}</span>
               <span aria-hidden="true" className={`ml-1 h-5 w-5 shrink-0 rounded-full border ${serviceId === s.id ? "border-gold bg-gold" : "border-muted-foreground"}`} />
