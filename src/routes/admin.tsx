@@ -517,13 +517,80 @@ function BarbersEditor({ barbers, reload }: { barbers: Barber[]; reload: () => v
   );
 }
 
+function Financeiro({ bookings }: { bookings: Booking[] }) {
+  const [period, setPeriod] = useState<"dia" | "mes" | "ano">("dia");
+  const [ref, setRef] = useState(todayISO());
+  const prefix = period === "dia" ? ref : period === "mes" ? ref.slice(0, 7) : ref.slice(0, 4);
+  const inP = bookings.filter((b) => b.booking_date.startsWith(prefix));
+  const done = inP.filter((b) => b.status === "concluido");
+  const pending = inP.filter((b) => b.status !== "concluido" && b.status !== "cancelado");
+  const total = done.reduce((s, b) => s + Number(b.price), 0);
+  const prev = pending.reduce((s, b) => s + Number(b.price), 0);
+  const byService = Object.entries(
+    done.reduce<Record<string, { n: number; v: number }>>((acc, b) => {
+      const k = b.service_name;
+      acc[k] = { n: (acc[k]?.n ?? 0) + 1, v: (acc[k]?.v ?? 0) + Number(b.price) };
+      return acc;
+    }, {}),
+  ).sort((a, b) => b[1].v - a[1].v);
+  const input = "w-full rounded-xl border border-border bg-card px-4 py-3 text-sm";
+  return (
+    <div className="space-y-4 px-6 pt-6">
+      <div className="flex gap-2">
+        {(["dia", "mes", "ano"] as const).map((p) => (
+          <button key={p} type="button" onClick={() => setPeriod(p)}
+            className={`rounded-full px-4 py-2 text-xs font-semibold ${period === p ? "bg-primary text-primary-foreground" : "border border-border bg-card text-muted-foreground"}`}>
+            {p === "dia" ? "Dia" : p === "mes" ? "Mês" : "Ano"}
+          </button>
+        ))}
+      </div>
+      {period === "dia" ? (
+        <input type="date" value={ref} onChange={(e) => e.target.value && setRef(e.target.value)} className={input} />
+      ) : period === "mes" ? (
+        <input type="month" value={ref.slice(0, 7)} onChange={(e) => e.target.value && setRef(`${e.target.value}-01`)} className={input} />
+      ) : (
+        <select value={ref.slice(0, 4)} onChange={(e) => setRef(`${e.target.value}-01-01`)} className={input}>
+          {Array.from({ length: 6 }, (_, i) => String(new Date().getFullYear() - 4 + i)).map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      )}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <p className="text-xs text-muted-foreground">Faturado</p>
+          <p className="mt-1 text-xl font-bold">R$ {formatBRL(total)}</p>
+          <p className="text-xs text-muted-foreground">{done.length} finalizado(s)</p>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <p className="text-xs text-muted-foreground">A receber</p>
+          <p className="mt-1 text-xl font-bold">R$ {formatBRL(prev)}</p>
+          <p className="text-xs text-muted-foreground">{pending.length} agendado(s)</p>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-border bg-card p-4">
+        <p className="mb-2 text-sm font-semibold">Por serviço (finalizados)</p>
+        {byService.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nenhum atendimento finalizado no período.</p>
+        ) : (
+          byService.map(([name, v]) => (
+            <div key={name} className="flex justify-between border-t border-border py-2 text-sm first:border-0">
+              <span>{name} · {v.n}x</span>
+              <span className="font-semibold">R$ {formatBRL(v.v)}</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Panel() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [barberId, setBarberId] = useState<string>(() => localStorage.getItem("agenda_barber") ?? "");
   const [filter, setFilter] = useState<"todos" | "ativos" | "concluidos" | "cancelados">("ativos");
   const [day, setDay] = useState<string | null>(todayISO());
-  const [tab, setTab] = useState<"agenda" | "servicos" | "horarios" | "barbeiros">("agenda");
+  const [tab, setTab] = useState<"agenda" | "financeiro" | "servicos" | "horarios" | "barbeiros">("agenda");
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -652,24 +719,25 @@ function Panel() {
         </button>
       </header>
 
-      <div className="flex gap-2 px-6 pt-6">
-        {(["agenda", "servicos", "horarios", "barbeiros"] as const).map((t) => (
+      <div className="flex gap-2 overflow-x-auto px-6 pt-6">
+        {(["agenda", "financeiro", "servicos", "horarios", "barbeiros"] as const).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
+            className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
               tab === t
                 ? "bg-primary text-primary-foreground"
                 : "border border-border bg-card text-muted-foreground"
             }`}
           >
             {t === "horarios" ? <Clock className="h-3.5 w-3.5" /> : null}
-            {t === "agenda" ? "Agenda" : t === "servicos" ? "Serviços" : t === "horarios" ? "Horários" : "Barbeiros"}
+            {t === "agenda" ? "Agenda" : t === "financeiro" ? "Financeiro" : t === "servicos" ? "Serviços" : t === "horarios" ? "Horários" : "Barbeiros"}
           </button>
         ))}
       </div>
 
+      {tab === "financeiro" ? <Financeiro bookings={bookings.filter((b) => b.barber_id === barberId)} /> : null}
       {tab === "horarios" ? <ScheduleEditor /> : null}
       {tab === "horarios" ? <InstallApp /> : null}
       {tab === "barbeiros" ? <BarbersEditor barbers={barbers} reload={loadBarbers} /> : null}
