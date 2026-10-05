@@ -768,14 +768,14 @@ function Panel() {
             </button>
           );
         })}
-      </div>
-      <div className="flex items-center gap-2 px-6 pt-3">
         <input
           type="date"
           value={day ?? ""}
           onChange={(e) => e.target.value && setDay(e.target.value)}
-          className="min-w-0 rounded-xl border border-border bg-card px-3 py-2 text-xs"
+          className="shrink-0 rounded-xl border border-border bg-card px-3 py-2 text-xs"
         />
+      </div>
+      <div className="flex items-center gap-2 px-6 pt-3">
         {(["todos", "ativos", "concluidos", "cancelados"] as const).map((f) => (
           <button
             key={f}
