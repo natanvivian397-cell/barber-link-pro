@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, CalendarDays, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +25,10 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
+  // The booking page is the site's main page: opening the link goes straight there.
+  beforeLoad: () => {
+    throw redirect({ to: "/agendar" });
+  },
   component: Index,
 });
 
