@@ -240,12 +240,12 @@ function Agendar() {
           <p className="mt-2 text-sm text-muted-foreground">
             Já avisamos a barbearia. Te esperamos!
           </p>
-          <Link
-            to="/"
+          <a
+            href="/agendar"
             className="mt-8 rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground"
           >
             Voltar ao início
-          </Link>
+          </a>
         </div>
       </div>
     );
