@@ -27,7 +27,7 @@ export const Route = createFileRoute("/")({
   }),
   // The booking page is the site's main page: opening the link goes straight there.
   beforeLoad: () => {
-    throw redirect({ to: "/agendar" });
+    throw redirect({ to: "/agendar", search: { servico: undefined } });
   },
   component: Index,
 });
