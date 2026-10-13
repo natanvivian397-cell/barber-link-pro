@@ -121,11 +121,17 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
-  // Register the kill-switch service worker on every page so stale cached
-  // versions from older deployments are cleared for all visitors.
+  // Remove any old service workers and caches silently (no re-registration,
+  // no forced reload), so visitors never see a stale version again.
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => regs.forEach((r) => r.unregister()))
+        .catch(() => {});
+    }
+    if ("caches" in window) {
+      caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {});
     }
   }, []);
 

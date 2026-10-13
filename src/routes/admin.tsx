@@ -188,9 +188,7 @@ function InstallApp() {
       window.top !== window.self ||
       window.location.hostname === "localhost" ||
       window.location.hostname.includes("id-preview");
-    if (!isPreview && "serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
-    }
+    void isPreview;
     return () => window.removeEventListener("beforeinstallprompt", onPrompt);
   }, []);
 
