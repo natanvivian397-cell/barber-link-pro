@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowRight, Calendar, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
@@ -265,7 +265,7 @@ function Agendar() {
         <section className="mt-12">
           <h2 className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">1. &nbsp; Selecione a data</h2>
           <label className="mt-4 flex items-center rounded-full border border-border bg-card px-5 py-3 text-foreground focus-within:border-gold">
-            <span className="mr-3 text-xl text-gold" aria-hidden="true">▣</span>
+            <Calendar className="mr-3 h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
             <select aria-label="Selecionar data" value={date} onChange={(e) => { setDate(e.target.value); setTime(null); }} className="min-w-0 flex-1 cursor-pointer bg-transparent text-sm outline-none">
               {days.map((d) => <option key={d} value={d} disabled={schedule?.find((s) => s.weekday === weekdayOfISO(d))?.is_open === false} className="bg-card text-foreground">{new Date(`${d}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}</option>)}
             </select>
