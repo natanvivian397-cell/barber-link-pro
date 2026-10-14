@@ -21,7 +21,7 @@ export function CancelBooking() {
     setBusy(true);
     const { data, error } = await supabase.rpc("find_my_bookings", { _name: name, _phone: phone });
     setBusy(false);
-    if (error) return toast.error("Não foi possível buscar. Tente novamente.");
+    if (error) { toast.error("Não foi possível buscar. Tente novamente."); return; }
     setList((data ?? []) as Found[]);
   }
 
@@ -30,7 +30,7 @@ export function CancelBooking() {
     setBusy(true);
     const { data, error } = await supabase.rpc("cancel_my_booking", { _id: b.id, _name: name, _phone: phone });
     setBusy(false);
-    if (error || !data) return toast.error("Não foi possível cancelar.");
+    if (error || !data) { toast.error("Não foi possível cancelar."); return; }
     toast.success("Horário cancelado.");
     setList((l) => (l ?? []).filter((x) => x.id !== b.id));
   }
