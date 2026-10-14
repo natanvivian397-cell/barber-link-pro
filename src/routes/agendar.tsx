@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
 import { Button } from "@/components/ui/button";
 import { CatalogPhoto } from "@/components/CatalogPhoto";
+import { CancelBooking } from "@/components/CancelBooking";
 import logo from "@/assets/bom-jesus-logo.png.asset.json";
 import {
   addDaysISO,
@@ -310,6 +311,7 @@ function Agendar() {
         <Button type="button" onClick={submit} disabled={saving} className="mt-7 h-14 w-full gap-3 rounded-full bg-gold text-sm font-semibold uppercase tracking-[0.15em] text-gold-foreground hover:bg-gold/90">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Confirmar agendamento <ArrowRight className="h-4 w-4" />
         </Button>
+        <CancelBooking />
         <p className="mt-8 text-center text-xs uppercase tracking-[0.3em] text-gold">— &nbsp; Desde 2015 &nbsp; —</p>
       </main>
     </div>
