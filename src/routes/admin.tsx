@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import type { Session } from "@supabase/supabase-js";
-import { Check, CheckCheck, Clock, Download, LogOut, Loader2, Phone, Plus, Share, X } from "lucide-react";
+import { Check, CheckCheck, Clock, Download, LogOut, Loader2, Phone, Plus, Share, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
@@ -646,6 +646,12 @@ function Panel() {
     await setStatus(b.id, "cancelado");
   }
 
+  async function remove(b: Booking) {
+    if (!confirm(`Excluir o agendamento de ${b.customer_name} às ${b.booking_time}? Essa ação não pode ser desfeita.`)) return;
+    const { error } = await supabase.from("bookings").delete().eq("id", b.id);
+    if (error) toast.error("Não foi possível excluir.");
+  }
+
   async function setStatus(id: string, status: string) {
     const { error } = await supabase.from("bookings").update({ status }).eq("id", id);
     if (error) toast.error("Não foi possível atualizar.");
@@ -834,6 +840,15 @@ function Panel() {
                   {b.status}
                 </span>
                 <span className="text-sm font-semibold">R$ {formatBRL(b.price)}</span>
+                <button
+                  type="button"
+                  onClick={() => remove(b)}
+                  aria-label="Excluir agendamento"
+                  title="Excluir agendamento"
+                  className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Excluir
+                </button>
                 <a
                   href={`https://wa.me/55${b.customer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Olá ${b.customer_name}! Aqui é da Barbearia Bom Jesus, sobre seu horário de ${formatDateBR(b.booking_date)} às ${b.booking_time} (${b.service_name}).`)}`}
                   target="_blank"
