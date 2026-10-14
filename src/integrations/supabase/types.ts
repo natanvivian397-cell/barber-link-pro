@@ -181,7 +181,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cancel_my_booking: {
+        Args: { _id: string; _name: string; _phone: string }
+        Returns: boolean
+      }
+      find_my_bookings: {
+        Args: { _name: string; _phone: string }
+        Returns: {
+          booking_date: string
+          booking_time: string
+          id: string
+          service_name: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
