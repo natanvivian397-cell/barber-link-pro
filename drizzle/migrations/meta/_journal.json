@@ -8,6 +8,13 @@
       "when": 1790983301671,
       "tag": "0000_barber_delete_set_null",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792014024182,
+      "tag": "0001_customer_cancel",
+      "breakpoints": true
     }
   ]
 }
