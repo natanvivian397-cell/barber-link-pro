@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
 import { CatalogPhotoUpload } from "@/components/CatalogPhoto";
+import { ScheduleBlocks } from "@/components/ScheduleBlocks";
 import {
   WEEKDAY_NAMES,
   addDaysISO,
@@ -225,7 +226,7 @@ function InstallApp() {
   );
 }
 
-function ScheduleEditor() {
+function ScheduleEditor({ barberId }: { barberId: string }) {
   const [days, setDays] = useState<ScheduleDay[]>([]);
   const [saving, setSaving] = useState<number | null>(null);
 
@@ -262,6 +263,7 @@ function ScheduleEditor() {
 
   return (
     <div className="space-y-3 px-6 pt-6">
+      <ScheduleBlocks barberId={barberId} days={days} />
       <p className="text-sm text-muted-foreground">
         Desligue os dias em que não trabalha e ajuste os horários. Vale na hora para quem agenda.
       </p>
@@ -742,7 +744,7 @@ function Panel() {
       </div>
 
       {tab === "financeiro" ? <Financeiro bookings={bookings.filter((b) => b.barber_id === barberId)} /> : null}
-      {tab === "horarios" ? <ScheduleEditor /> : null}
+      {tab === "horarios" ? <ScheduleEditor barberId={barberId} /> : null}
       {tab === "horarios" ? <InstallApp /> : null}
       {tab === "barbeiros" ? <BarbersEditor barbers={barbers} reload={loadBarbers} /> : null}
       {tab === "servicos" ? <ServicesEditor /> : null}
