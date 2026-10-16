@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Catalog photos use a private Storage bucket with anonymous read policy and short-lived signed URLs; this allows visitor images while keeping uploads restricted to signed-in staff.
+- Date-specific barber blocks live separately from bookings and are enforced by database overlap triggers, so blocking never creates financial history and cannot be bypassed by stale availability.

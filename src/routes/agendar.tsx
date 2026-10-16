@@ -120,6 +120,23 @@ function Agendar() {
     },
   });
 
+  const { data: blocked, refetch: refetchBlocked, isSuccess: blocksReady } = useQuery({
+    queryKey: ["schedule-blocks", date, barberId],
+    enabled: !!barberId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("schedule_blocks").select("booking_time, duration_min").eq("booking_date", date).eq("barber_id", barberId ?? "");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  useEffect(() => {
+    const channel = supabase.channel("blocks-live-agendar")
+      .on("postgres_changes", { event: "*", schema: "public", table: "schedule_blocks" }, () => { void refetchBlocked(); })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [refetchBlocked]);
+
   useEffect(() => {
     const channel = supabase
       .channel("bookings-live-agendar")
@@ -160,7 +177,7 @@ function Agendar() {
   const day = schedule?.find((d) => d.weekday === weekdayOfISO(date));
   const selectedService = services?.find((s) => s.id === serviceId);
   const slots = barberId
-    ? availableSlots(day, selectedService?.duration_min ?? 30, taken ?? [], date)
+    ? blocksReady ? availableSlots(day, selectedService?.duration_min ?? 30, [...(taken ?? []), ...(blocked ?? [])], date) : []
     : buildSlots(day);
   const days = Array.from({ length: 14 }, (_, i) => addDaysISO(todayISO(), i));
 
