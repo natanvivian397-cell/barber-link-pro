@@ -104,6 +104,38 @@ export type Database = {
           },
         ]
       }
+      schedule_blocks: {
+        Row: {
+          barber_id: string
+          booking_date: string
+          booking_time: string
+          duration_min: number
+          id: string
+        }
+        Insert: {
+          barber_id: string
+          booking_date: string
+          booking_time: string
+          duration_min?: number
+          id?: string
+        }
+        Update: {
+          barber_id?: string
+          booking_date?: string
+          booking_time?: string
+          duration_min?: number
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_blocks_barber_id_fkey"
+            columns: ["barber_id"]
+            isOneToOne: false
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedule_settings: {
         Row: {
           afternoon_end: string
