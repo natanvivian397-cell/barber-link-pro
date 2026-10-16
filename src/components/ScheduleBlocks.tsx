@@ -66,7 +66,7 @@ export function ScheduleBlocks({ barberId, days }: { barberId: string; days: Sch
     {!barberId ? <p className="text-sm text-muted-foreground">Selecione um barbeiro.</p> : loading ? <p className="text-sm text-muted-foreground">Carregando horários…</p> : failed ? <p className="text-sm text-destructive">Não foi possível carregar os horários.</p> : !day?.is_open ? <p className="text-sm text-muted-foreground">Fechado neste dia.</p> : <div className="grid grid-cols-3 gap-2">
       {Array.from(new Set([...buildSlots(day), ...blocks.map((b) => b.booking_time)])).sort().map((time) => {
         const block = blocks.find((b) => b.booking_time === time);
-        const minutes = (value: string) => { const [h, m] = value.split(":").map(Number); return h * 60 + m; };
+        const minutes = (value: string) => { const [h = 0, m = 0] = value.split(":").map(Number); return h * 60 + m; };
         const start = minutes(time);
         const occupied = taken.some((b) => minutes(b.booking_time) < start + day.slot_min && minutes(b.booking_time) + b.duration_min > start);
         return <Button key={time} variant={block ? "destructive" : "outline"} disabled={!!saving || occupied} aria-label={`${block ? "Liberar" : occupied ? "Agendado" : "Bloquear"} ${time}`} aria-pressed={!!block} onClick={() => void toggle(time)} className="h-14 flex-col gap-0.5 px-1">
