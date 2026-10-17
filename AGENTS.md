@@ -11,3 +11,4 @@
 
 - Catalog photos use a private Storage bucket with anonymous read policy and short-lived signed URLs; this allows visitor images while keeping uploads restricted to signed-in staff.
 - Date-specific barber blocks live separately from bookings and are enforced by database overlap triggers, so blocking never creates financial history and cannot be bypassed by stale availability.
+- Weekly fixed-client reservations are created atomically through an authenticated invoker RPC as ordinary bookings over a bounded date range; existing overlap triggers, cancellation, realtime and financial rules remain authoritative.

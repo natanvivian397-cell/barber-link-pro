@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BrandHeader } from "@/components/BrandHeader";
 import { CatalogPhotoUpload } from "@/components/CatalogPhoto";
 import { ScheduleBlocks } from "@/components/ScheduleBlocks";
+import { FixedClients } from "@/components/FixedClients";
 import {
   WEEKDAY_NAMES,
   addDaysISO,
@@ -590,7 +591,7 @@ function Panel() {
   const [barberId, setBarberId] = useState<string>(() => localStorage.getItem("agenda_barber") ?? "");
   const [filter, setFilter] = useState<"todos" | "ativos" | "concluidos" | "cancelados">("ativos");
   const [day, setDay] = useState<string | null>(todayISO());
-  const [tab, setTab] = useState<"agenda" | "financeiro" | "servicos" | "horarios" | "barbeiros">("agenda");
+  const [tab, setTab] = useState<"agenda" | "financeiro" | "servicos" | "horarios" | "barbeiros" | "fixos">("agenda");
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -726,7 +727,7 @@ function Panel() {
       </header>
 
       <div className="flex gap-2 overflow-x-auto px-6 pt-6">
-        {(["agenda", "financeiro", "servicos", "horarios", "barbeiros"] as const).map((t) => (
+        {(["agenda", "fixos", "financeiro", "servicos", "horarios", "barbeiros"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -738,7 +739,7 @@ function Panel() {
             }`}
           >
             {t === "horarios" ? <Clock className="h-3.5 w-3.5" /> : null}
-            {t === "agenda" ? "Agenda" : t === "financeiro" ? "Financeiro" : t === "servicos" ? "Serviços" : t === "horarios" ? "Horários" : "Barbeiros"}
+            {t === "agenda" ? "Agenda" : t === "fixos" ? "Clientes fixos" : t === "financeiro" ? "Financeiro" : t === "servicos" ? "Serviços" : t === "horarios" ? "Horários" : "Barbeiros"}
           </button>
         ))}
       </div>
@@ -748,6 +749,7 @@ function Panel() {
       {tab === "horarios" ? <InstallApp /> : null}
       {tab === "barbeiros" ? <BarbersEditor barbers={barbers} reload={loadBarbers} /> : null}
       {tab === "servicos" ? <ServicesEditor /> : null}
+      {tab === "fixos" ? <FixedClients barberId={barberId} onSaved={() => { void load(); setDay(null); setTab("agenda"); }} /> : null}
 
       {tab === "agenda" ? (
         <>
