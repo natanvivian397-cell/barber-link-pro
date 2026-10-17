@@ -213,6 +213,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      book_fixed_client: {
+        Args: {
+          _barber: string
+          _end: string
+          _name: string
+          _phone: string
+          _service: string
+          _start: string
+          _time: string
+          _weekday: number
+        }
+        Returns: number
+      }
       cancel_my_booking: {
         Args: { _id: string; _name: string; _phone: string }
         Returns: boolean
