@@ -1,3 +1,5 @@
 - [x] Add date-specific, per-barber one-tap blocking and unblocking in Horários.
 - [x] Enforce blocks in booking availability and database overlap validation.
 - [x] Verify blocking and unblocking through the signed-in panel and public booking page.
+- [x] Add weekly fixed-client reservations for the selected barber over a chosen period.
+- [ ] Verify weekly creation, conflict rollback and public availability.
