@@ -15,6 +15,8 @@ import {
   buildSlots,
   formatBRL,
   formatDateBR,
+  isBookableDate,
+  isHolidayBlockedDate,
   todayISO,
   weekdayOfISO,
   type ScheduleDay,
@@ -176,10 +178,13 @@ function Agendar() {
 
   const day = schedule?.find((d) => d.weekday === weekdayOfISO(date));
   const selectedService = services?.find((s) => s.id === serviceId);
+  const isClosedDay = isHolidayBlockedDate(date) || day?.is_open === false;
   const slots = barberId
-    ? blocksReady ? availableSlots(day, selectedService?.duration_min ?? 30, [...(taken ?? []), ...(blocked ?? [])], date) : []
-    : buildSlots(day);
-  const days = Array.from({ length: 14 }, (_, i) => addDaysISO(todayISO(), i));
+    ? isClosedDay
+      ? []
+      : blocksReady ? availableSlots(day, selectedService?.duration_min ?? 30, [...(taken ?? []), ...(blocked ?? [])], date) : []
+    : isClosedDay ? [] : buildSlots(day);
+  const days = Array.from({ length: 30 }, (_, i) => addDaysISO(todayISO(), i));
 
   useEffect(() => {
     if (time && barberId && !slots.includes(time)) setTime(null);
@@ -201,6 +206,10 @@ function Agendar() {
     }
     if (!time) {
       toast.error("Escolha um horário.");
+      return;
+    }
+    if (isHolidayBlockedDate(date) || !isBookableDate(date, schedule)) {
+      toast.error("Esta data não está disponível para agendamento.");
       return;
     }
     if (name.trim().length < 2) {
@@ -282,10 +291,18 @@ function Agendar() {
 
         <section className="mt-12">
           <h2 className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">1. &nbsp; Selecione a data</h2>
+          <p className="mt-3 rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground">
+            Pausa de fim de ano: sem atendimento em 24, 25, 26 e 31 de dezembro e 1º e 2 de janeiro.
+          </p>
           <label className="mt-4 flex items-center rounded-full border border-border bg-card px-5 py-3 text-foreground focus-within:border-gold">
             <Calendar className="mr-3 h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
             <select aria-label="Selecionar data" value={date} onChange={(e) => { setDate(e.target.value); setTime(null); }} className="min-w-0 flex-1 cursor-pointer bg-transparent text-sm outline-none">
-              {days.map((d) => <option key={d} value={d} disabled={schedule?.find((s) => s.weekday === weekdayOfISO(d))?.is_open === false} className="bg-card text-foreground">{new Date(`${d}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}</option>)}
+              {days.map((d) => {
+                const openDay = schedule?.find((s) => s.weekday === weekdayOfISO(d));
+                const isHoliday = isHolidayBlockedDate(d);
+                const disabled = isHoliday || openDay?.is_open === false;
+                return <option key={d} value={d} disabled={disabled} className="bg-card text-foreground">{new Date(`${d}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}{isHoliday ? " — recesso" : ""}</option>;
+              })}
             </select>
           </label>
         </section>

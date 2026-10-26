@@ -110,6 +110,53 @@ export function availableSlots(
   return Array.from(new Set(out)).sort();
 }
 
+export const BOOKING_HORIZON_DAYS = 30;
+
+export const HOLIDAY_BLOCKED_DATES = new Set<string>([
+  "2026-12-24",
+  "2026-12-25",
+  "2026-12-26",
+  "2026-12-31",
+  "2027-01-01",
+  "2027-01-02",
+  "2027-12-24",
+  "2027-12-25",
+  "2027-12-26",
+  "2027-12-31",
+  "2028-01-01",
+  "2028-01-02",
+  "2028-12-24",
+  "2028-12-25",
+  "2028-12-26",
+  "2028-12-31",
+  "2029-01-01",
+  "2029-01-02",
+]);
+
+export function isHolidayBlockedDate(iso: string) {
+  if (HOLIDAY_BLOCKED_DATES.has(iso)) return true;
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return false;
+  const md = `${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  return (
+    md === "12-24" ||
+    md === "12-25" ||
+    md === "12-26" ||
+    md === "12-31" ||
+    md === "01-01" ||
+    md === "01-02"
+  );
+}
+
+export function isBookableDate(dateISO: string, openDays: ScheduleDay[] | undefined) {
+  if (isHolidayBlockedDate(dateISO)) return false;
+  const day = openDays?.find((d) => d.weekday === weekdayOfISO(dateISO));
+  if (!day || !day.is_open) return false;
+  const start = todayISO();
+  const end = addDaysISO(todayISO(), BOOKING_HORIZON_DAYS);
+  return dateISO >= start && dateISO <= end;
+}
+
 export function addDaysISO(iso: string, n: number) {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(Date.UTC(y ?? 2000, (m ?? 1) - 1, (d ?? 1) + n)).toISOString().slice(0, 10);
