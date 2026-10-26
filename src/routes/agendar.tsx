@@ -291,9 +291,9 @@ function Agendar() {
 
         <section className="mt-12">
           <h2 className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">1. &nbsp; Selecione a data</h2>
-          <p className="mt-3 rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground">
+          {isHolidayBlockedDate(date) ? <p className="mt-3 rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground">
             Pausa de fim de ano: sem atendimento em 24, 25, 26 e 31 de dezembro e 1º e 2 de janeiro.
-          </p>
+          </p> : null}
           <label className="mt-4 flex items-center rounded-full border border-border bg-card px-5 py-3 text-foreground focus-within:border-gold">
             <Calendar className="mr-3 h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
             <select aria-label="Selecionar data" value={date} onChange={(e) => { setDate(e.target.value); setTime(null); }} className="min-w-0 flex-1 cursor-pointer bg-transparent text-sm outline-none">
