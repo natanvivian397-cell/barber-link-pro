@@ -138,6 +138,7 @@ export type Database = {
       }
       schedule_settings: {
         Row: {
+          barber_id: string
           afternoon_end: string
           afternoon_start: string
           created_at: string
@@ -149,6 +150,7 @@ export type Database = {
           weekday: number
         }
         Insert: {
+          barber_id: string
           afternoon_end?: string
           afternoon_start?: string
           created_at?: string
@@ -160,6 +162,7 @@ export type Database = {
           weekday: number
         }
         Update: {
+          barber_id?: string
           afternoon_end?: string
           afternoon_start?: string
           created_at?: string
