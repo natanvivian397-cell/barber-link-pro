@@ -152,9 +152,13 @@ function Agendar() {
   }, [refetchTaken]);
 
   const { data: schedule, refetch: refetchSchedule } = useQuery({
-    queryKey: ["schedule"],
+    queryKey: ["schedule", barberId],
+    enabled: !!barberId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("schedule_settings").select("*");
+      const { data, error } = await supabase
+        .from("schedule_settings")
+        .select("*")
+        .eq("barber_id", barberId ?? "");
       if (error) throw error;
       return (data ?? []) as ScheduleDay[];
     },
