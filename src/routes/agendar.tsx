@@ -152,9 +152,13 @@ function Agendar() {
   }, [refetchTaken]);
 
   const { data: schedule, refetch: refetchSchedule } = useQuery({
-    queryKey: ["schedule"],
+    queryKey: ["schedule", barberId],
+    enabled: !!barberId,
     queryFn: async () => {
-      const { data, error } = await supabase.from("schedule_settings").select("*");
+      const { data, error } = await supabase
+        .from("schedule_settings")
+        .select("*")
+        .eq("barber_id", barberId ?? "");
       if (error) throw error;
       return (data ?? []) as ScheduleDay[];
     },
@@ -162,12 +166,12 @@ function Agendar() {
 
   useEffect(() => {
     const channel = supabase
-      .channel("schedule-live-public")
+      .channel(`schedule-live-public-${barberId ?? "none"}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "schedule_settings" },
+        { event: "*", schema: "public", table: "schedule_settings", filter: barberId ? `barber_id=eq.${barberId}` : undefined },
         () => {
-          refetchSchedule();
+          void refetchSchedule();
         },
       )
       .subscribe();
