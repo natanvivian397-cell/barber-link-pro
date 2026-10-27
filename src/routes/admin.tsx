@@ -232,26 +232,13 @@ function ScheduleEditor({ barberId }: { barberId: string }) {
   const [saving, setSaving] = useState<number | null>(null);
 
   async function load() {
-    if (!barberId) {
-      setDays([]);
-      return;
-    }
-    const { data } = await supabase
-      .from("schedule_settings")
-      .select("*")
-      .eq("barber_id", barberId)
-      .order("weekday");
+    const { data } = await supabase.from("schedule_settings").select("*").order("weekday");
     setDays((data ?? []) as ScheduleDay[]);
   }
 
   useEffect(() => {
-    void load();
-    const channel = supabase
-      .channel(`schedule-admin-${barberId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "schedule_settings" }, () => void load())
-      .subscribe();
-    return () => { void supabase.removeChannel(channel); };
-  }, [barberId]);
+    load();
+  }, []);
 
   async function save(day: ScheduleDay, patch: Partial<ScheduleDay>) {
     const next = { ...day, ...patch };
@@ -267,7 +254,6 @@ function ScheduleEditor({ barberId }: { barberId: string }) {
         afternoon_end: next.afternoon_end,
         slot_min: next.slot_min,
       })
-      .eq("barber_id", barberId)
       .eq("weekday", day.weekday);
     setSaving(null);
     if (error) {
