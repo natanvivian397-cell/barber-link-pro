@@ -169,7 +169,7 @@ function Agendar() {
       .channel(`schedule-live-public-${barberId ?? "none"}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "schedule_settings", filter: barberId ? `barber_id=eq.${barberId}` : undefined },
+        { event: "*", schema: "public", table: "schedule_settings" },
         () => {
           void refetchSchedule();
         },
