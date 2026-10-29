@@ -56,6 +56,10 @@ CREATE POLICY schedule_blocks_admin_manage
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
 
+REVOKE ALL ON public.schedule_blocks FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.schedule_blocks TO anon, authenticated;
+GRANT INSERT, UPDATE, DELETE ON public.schedule_blocks TO authenticated;
+
 -- For catalog photos, remove only storage policies whose expressions refer to this
 -- bucket, leaving unrelated Storage buckets untouched. Then install known policies.
 DO $
