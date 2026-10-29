@@ -33,9 +33,22 @@ $$;
 REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 
--- Schedule blocks: only allowlisted administrators may create/change/delete.
-DROP POLICY IF EXISTS blocks_staff_manage ON public.schedule_blocks;
-DROP POLICY IF EXISTS schedule_blocks_admin_manage ON public.schedule_blocks;
+-- Schedule blocks: remove any legacy policy, then permit public availability reads
+-- and allowlisted administrator writes only.
+DO $
+DECLARE p record;
+BEGIN
+  FOR p IN
+    SELECT policyname
+    FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'schedule_blocks'
+  LOOP
+    EXECUTE format('DROP POLICY %I ON public.schedule_blocks', p.policyname);
+  END LOOP;
+END;
+$;
+CREATE POLICY blocks_public_read ON public.schedule_blocks
+  FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY schedule_blocks_admin_manage
   ON public.schedule_blocks
   FOR ALL
@@ -43,13 +56,28 @@ CREATE POLICY schedule_blocks_admin_manage
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
 
--- Catalog photos remain publicly readable, but only allowlisted admins may write.
-DROP POLICY IF EXISTS "Staff can upload catalog photos" ON storage.objects;
-DROP POLICY IF EXISTS "Staff can replace catalog photos" ON storage.objects;
-DROP POLICY IF EXISTS "Staff can delete catalog photos" ON storage.objects;
-DROP POLICY IF EXISTS "Admins can upload catalog photos" ON storage.objects;
-DROP POLICY IF EXISTS "Admins can replace catalog photos" ON storage.objects;
-DROP POLICY IF EXISTS "Admins can delete catalog photos" ON storage.objects;
+-- For catalog photos, remove only storage policies whose expressions refer to this
+-- bucket, leaving unrelated Storage buckets untouched. Then install known policies.
+DO $
+DECLARE p record;
+BEGIN
+  FOR p IN
+    SELECT policyname
+    FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects'
+      AND (
+        coalesce(qual, '') ILIKE '%catalog-photos%'
+        OR coalesce(with_check, '') ILIKE '%catalog-photos%'
+      )
+  LOOP
+    EXECUTE format('DROP POLICY %I ON storage.objects', p.policyname);
+  END LOOP;
+END;
+$;
+
+CREATE POLICY "Catalog photos can be viewed"
+  ON storage.objects FOR SELECT TO anon, authenticated
+  USING (bucket_id = 'catalog-photos');
 
 CREATE POLICY "Admins can upload catalog photos"
   ON storage.objects FOR INSERT TO authenticated
