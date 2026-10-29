@@ -378,7 +378,10 @@ function Admin() {
     );
   }
 
-  return session ? <Panel /> : <LoginCard />;
+  const adminEmails = ["natanvivian39@gmail.com", "douglasmachadodigao@gmail.com"];
+  const isAuthorizedAdmin = !!session?.user.email && adminEmails.includes(session.user.email.toLowerCase());
+
+  return session && isAuthorizedAdmin ? <Panel /> : <LoginCard />;
 }
 
 function LoginCard() {
