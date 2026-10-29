@@ -5,6 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 
 const BUCKET = "catalog-photos";
+const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
+const ALLOWED_PHOTO_TYPES: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/avif": "avif",
+};
 
 export function CatalogPhoto({ path, alt, className = "" }: { path: string | null; alt: string; className?: string }) {
   const [url, setUrl] = useState<string>();
@@ -33,13 +40,17 @@ export function CatalogPhotoUpload({ table, id, path, onSaved }: {
     const file = event.target.files?.[0];
     if (!file) return;
     event.target.value = "";
-    if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) {
-      toast.error("Escolha uma foto de até 5 MB.");
+    const extension = ALLOWED_PHOTO_TYPES[file.type];
+    if (!extension || file.size === 0 || file.size > MAX_PHOTO_SIZE) {
+      toast.error("Escolha uma foto JPG, PNG, WebP ou AVIF de até 5 MB.");
       return;
     }
     setBusy(true);
-    const next = `${table}/${id}/${crypto.randomUUID()}.${file.name.split(".").pop()?.toLowerCase() || "jpg"}`;
-    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(next, file, { contentType: file.type });
+    const next = `${table}/${id}/${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await supabase.storage.from(BUCKET).upload(next, file, {
+      contentType: file.type,
+      upsert: false,
+    });
     if (uploadError) {
       toast.error("Não foi possível enviar a foto.");
       setBusy(false);
@@ -80,7 +91,7 @@ export function CatalogPhotoUpload({ table, id, path, onSaved }: {
       <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-foreground">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
         {path ? "Trocar foto" : "Adicionar foto"}
-        <input type="file" accept="image/*" className="sr-only" disabled={busy} onChange={upload} />
+        <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" className="sr-only" disabled={busy} onChange={upload} />
       </label>
       {path ? <Button type="button" variant="ghost" size="sm" onClick={remove} disabled={busy}>Remover foto</Button> : null}
     </div>
