@@ -32,7 +32,7 @@ function MeusAgendamentos() {
 
   async function searchBookings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (name.trim().length < 2 || phone.replace(/\\D/g, "").length < 10) {
+    if (name.trim().length < 2 || phone.replace(/\D/g, "").length < 10) {
       toast.error("Informe o nome e o WhatsApp usados no agendamento.");
       return;
     }
