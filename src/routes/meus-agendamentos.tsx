@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, Clock3, Scissors, ArrowLeft, Loader2, Smartphone } from "lucide-react";
+import { CalendarDays, Clock3, Scissors, ArrowLeft, Loader2, Smartphone, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getDeviceToken } from "@/lib/deviceIdentity";
@@ -32,6 +32,7 @@ function MeusAgendamentos() {
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   async function loadDeviceBookings(token: string) {
     const { data, error } = await supabase.rpc("find_my_bookings_by_device", {
@@ -55,6 +56,31 @@ function MeusAgendamentos() {
     }
     void loadDeviceBookings(token).finally(() => setLoading(false));
   }, []);
+
+  async function cancelBooking(booking: Booking) {
+    if (!deviceToken) {
+      toast.error("Este dispositivo ainda não pôde ser identificado.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Cancelar ${booking.service_name} em ${formatDateBR(booking.booking_date)} às ${booking.booking_time}?`
+    );
+    if (!confirmed) return;
+
+    setCancellingId(booking.id);
+    const { data, error } = await supabase.rpc("cancel_my_booking_by_device", {
+      _booking_id: booking.id,
+      _device_token: deviceToken,
+    });
+    setCancellingId(null);
+
+    if (error || !data) {
+      toast.error("Não foi possível cancelar este agendamento. Tente novamente.");
+      return;
+    }
+    toast.success("Agendamento cancelado.");
+    setBookings((current) => (current ?? []).filter((item) => item.id !== booking.id));
+  }
 
   async function linkPreviousBookings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -137,6 +163,16 @@ function MeusAgendamentos() {
                           {booking.booking_time}
                         </span>
                       </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={cancellingId === booking.id || cancellingId !== null}
+                        onClick={() => void cancelBooking(booking)}
+                        className="mt-4 gap-2 rounded-full border-destructive text-destructive hover:bg-destructive/10"
+                      >
+                        {cancellingId === booking.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                        {cancellingId === booking.id ? "Cancelando..." : "Cancelar agendamento"}
+                      </Button>
                     </div>
                   </div>
                 </article>
