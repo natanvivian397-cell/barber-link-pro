@@ -173,7 +173,7 @@ DECLARE
   local_time time := (now() AT TIME ZONE 'America/Sao_Paulo')::time;
 BEGIN
   IF length(trim(coalesce(NEW.customer_name, ''))) < 2
-     OR length(regexp_replace(coalesce(NEW.customer_phone, ''), '\\D', '', 'g')) < 10 THEN
+     OR length(regexp_replace(coalesce(NEW.customer_phone, ''), '\D', '', 'g')) < 10 THEN
     RAISE EXCEPTION 'Informe nome e WhatsApp válidos';
   END IF;
 
