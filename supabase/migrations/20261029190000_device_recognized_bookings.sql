@@ -87,7 +87,7 @@ DECLARE
   linked_count integer;
 BEGIN
   IF length(coalesce(_device_token, '')) < 50 OR length(_device_token) > 200
-     OR length(regexp_replace(coalesce(_phone, ''), '\\D', '', 'g')) < 10
+     OR length(regexp_replace(coalesce(_phone, ''), '[^0-9]', '', 'g')) < 10
      OR length(trim(coalesce(_name, ''))) < 2 THEN
     RETURN 0;
   END IF;
@@ -95,9 +95,10 @@ BEGIN
   INSERT INTO public.booking_device_access (booking_id, device_token)
   SELECT b.id, _device_token
   FROM public.bookings b
-  WHERE lower(trim(b.customer_name)) = lower(trim(_name))
-    AND regexp_replace(b.customer_phone, '\\D', '', 'g') =
-        regexp_replace(_phone, '\\D', '', 'g')
+  WHERE (lower(trim(b.customer_name)) = lower(trim(_name))
+         OR split_part(lower(trim(b.customer_name)), ' ', 1) = split_part(lower(trim(_name)), ' ', 1))
+    AND regexp_replace(b.customer_phone, '[^0-9]', '', 'g') =
+        regexp_replace(_phone, '[^0-9]', '', 'g')
     AND b.status NOT IN ('cancelado', 'concluido')
     AND b.booking_date >= (now() AT TIME ZONE 'America/Sao_Paulo')::date
   ON CONFLICT (booking_id, device_token) DO NOTHING;
