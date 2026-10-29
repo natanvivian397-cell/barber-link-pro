@@ -8,7 +8,6 @@ import { getDeviceToken } from "@/lib/deviceIdentity";
 import { BrandHeader } from "@/components/BrandHeader";
 import { Button } from "@/components/ui/button";
 import { CatalogPhoto } from "@/components/CatalogPhoto";
-import { CancelBooking } from "@/components/CancelBooking";
 import logo from "@/assets/bom-jesus-logo.png.asset.json";
 import {
   addDaysISO,
@@ -369,7 +368,6 @@ function Agendar() {
         >
           <Calendar className="h-4 w-4" /> Meus agendamentos
         </Link>
-        <CancelBooking />
         <p className="mt-8 text-center text-xs uppercase tracking-[0.3em] text-gold">— &nbsp; Desde 2015 &nbsp; —</p>
       </main>
     </div>
