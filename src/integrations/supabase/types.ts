@@ -269,6 +269,10 @@ export type Database = {
       claim_my_bookings_for_device: {
         Args: { _device_token: string; _name: string; _phone: string }
         Returns: number
+      },
+      cancel_my_booking_by_device: {
+        Args: { _booking_id: string; _device_token: string }
+        Returns: boolean
       }
     }
     Enums: {
