@@ -38,3 +38,16 @@ Foram incorporadas ao branch principal correções de defesa em profundidade par
 ## Conclusão
 
 O código versionado recebeu melhorias concretas, mas **não deve ser classificado como totalmente seguro nem como auditado em produção** até que a migração seja aplicada e as políticas RLS e configurações reais do Supabase sejam verificadas. Nenhuma senha, chave privada ou chave de serviço deve ser incluída no repositório ou compartilhada no relatório.
+
+
+## Atualização de 29/10/2026 — hardening adicional preparado
+
+Foi preparada na branch `security/database-rls-hardening` uma migração adicional para:
+- Restringir leitura de dados completos dos agendamentos às contas administrativas autorizadas.
+- Expor ao público somente os campos de disponibilidade por meio de uma view e usar um sinal de realtime sem dados pessoais.
+- Recriar políticas RLS conhecidas para serviços, barbeiros, horários, bloqueios e agendamentos.
+- Validar no banco se o barbeiro e o serviço estão ativos, conferir o expediente e obter preço/nome/duração diretamente do cadastro do serviço.
+- Limitar o RPC de clientes fixos às contas autorizadas e adicionar uma proteção restritiva às operações de escrita no bucket de fotos.
+- Restringir a exibição do painel no cliente às duas contas autorizadas.
+
+**Estado:** esta etapa ainda está em branch de trabalho e não deve ser tratada como ativa em produção até revisão, merge e aplicação no Supabase. Como não há conexão administrativa confirmada com o Supabase neste ambiente, as políticas efetivas do banco e a execução da migração continuam sem verificação. A mudança requer testes de regressão do agendamento público, cancelamento, agenda administrativa, clientes fixos, fotos e atualizações em tempo real.
