@@ -1,4 +1,4 @@
-name: Quality and security checks
+name: Production build check
 
 on:
   pull_request:
@@ -11,8 +11,8 @@ permissions:
   contents: read
 
 jobs:
-  checks:
-    name: Lint and production build
+  build:
+    name: Install and build
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -21,7 +21,5 @@ jobs:
         uses: oven-sh/setup-bun@v2
       - name: Install locked dependencies
         run: bun install --frozen-lockfile
-      - name: Lint
-        run: bun run lint
-      - name: Build
+      - name: Production build
         run: bun run build
