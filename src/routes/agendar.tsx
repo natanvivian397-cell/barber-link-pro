@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Calendar, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { getDeviceToken } from "@/lib/deviceIdentity";
 import { BrandHeader } from "@/components/BrandHeader";
 import { Button } from "@/components/ui/button";
 import { CatalogPhoto } from "@/components/CatalogPhoto";
@@ -229,17 +230,24 @@ function Agendar() {
       return;
     }
 
+    const deviceToken = getDeviceToken();
+    if (!deviceToken) {
+      toast.error("Não foi possível reconhecer este dispositivo. Atualize a página e tente novamente.");
+      return;
+    }
+
     setSaving(true);
-    const { error } = await supabase.from("bookings").insert({
-      barber_id: barberId,
-      customer_name: name.trim(),
-      customer_phone: phone.trim(),
-      service_id: selected.id,
-      service_name: selected.name,
-      price: selected.price,
-      booking_date: date,
-      booking_time: time,
-      notes: notes.trim() || null,
+    const { error } = await supabase.rpc("create_booking_for_device", {
+      _barber_id: barberId,
+      _customer_name: name.trim(),
+      _customer_phone: phone.trim(),
+      _service_id: selected.id,
+      _service_name: selected.name,
+      _price: selected.price,
+      _booking_date: date,
+      _booking_time: time,
+      _notes: notes.trim() || null,
+      _device_token: deviceToken,
     });
     setSaving(false);
 
