@@ -67,3 +67,11 @@ Essas proteções estão em uma proposta de migração/código e **não são efe
 ## Monitoramento contínuo preparado
 
 Foram adicionados workflows do GitHub Actions para executar lint/build em pull requests e para análise estática CodeQL em JavaScript/TypeScript. Neste momento, o GitHub não retornou resultados de execução/checks para a branch; portanto, não há build ou análise CodeQL aprovados a reportar ainda.
+
+
+## Resultados de automação observados durante esta revisão
+
+- **Build de produção:** aprovado no GitHub Actions para a versão de trabalho que contém as alterações de código e a migração.
+- **Lint completo do repositório:** falhou no primeiro workflow porque o projeto já contém centenas de violações de formatação Prettier distribuídas por arquivos existentes (757 apontamentos, incluindo 747 erros). Não apliquei formatação em massa para não gerar mudanças alheias à segurança e ao pedido de preservar o projeto.
+- **CodeQL:** a execução foi iniciada, mas ainda não havia resultado final disponível no momento desta atualização.
+- **Banco de produção:** permanece sem verificação direta; não foi executada uma migração remota neste ambiente.
