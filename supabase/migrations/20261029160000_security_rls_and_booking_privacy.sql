@@ -101,7 +101,8 @@ BEGIN
   INSERT INTO public.booking_slot_events (id, changed_at)
   VALUES (1, clock_timestamp())
   ON CONFLICT (id) DO UPDATE SET changed_at = EXCLUDED.changed_at;
-  RETURN COALESCE(NEW, OLD);
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
 END;
 $$;
 
@@ -170,7 +171,7 @@ BEGIN
     RAISE EXCEPTION 'Serviço indisponível';
   END IF;
 
-  IF NEW.booking_date < local_today OR NEW.booking_time !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' THEN
+  IF NEW.booking_date IS NULL OR NEW.booking_time IS NULL OR NEW.booking_date < local_today OR NEW.booking_time !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' THEN
     RAISE EXCEPTION 'Data ou horário inválido';
   END IF;
 
