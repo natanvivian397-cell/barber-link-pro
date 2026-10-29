@@ -112,13 +112,12 @@ function Agendar() {
     queryKey: ["taken", date, barberId],
     enabled: !!barberId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("booking_time, duration_min, status")
-        .eq("booking_date", date)
-        .eq("barber_id", barberId ?? "");
+      const { data, error } = await (supabase as any).rpc("public_booking_availability", {
+        _barber_id: barberId,
+        _booking_date: date,
+      });
       if (error) throw error;
-      return (data ?? []).filter((b) => b.status !== "cancelado") as Taken[];
+      return (data ?? []).filter((b: Taken) => b.status !== "cancelado") as Taken[];
     },
   });
 
@@ -138,18 +137,6 @@ function Agendar() {
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [refetchBlocked]);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel("bookings-live-agendar")
-      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => {
-        refetchTaken();
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [refetchTaken]);
 
   const { data: schedule, refetch: refetchSchedule } = useQuery({
     queryKey: ["schedule", barberId],
@@ -230,16 +217,14 @@ function Agendar() {
     }
 
     setSaving(true);
-    const { error } = await supabase.from("bookings").insert({
-      barber_id: barberId,
-      customer_name: name.trim(),
-      customer_phone: phone.trim(),
-      service_id: selected.id,
-      service_name: selected.name,
-      price: selected.price,
-      booking_date: date,
-      booking_time: time,
-      notes: notes.trim() || null,
+    const { error } = await (supabase as any).rpc("create_public_booking", {
+      _barber_id: barberId,
+      _service_id: selected.id,
+      _customer_name: name.trim(),
+      _customer_phone: phone.trim(),
+      _booking_date: date,
+      _booking_time: time,
+      _notes: notes.trim() || null,
     });
     setSaving(false);
 
