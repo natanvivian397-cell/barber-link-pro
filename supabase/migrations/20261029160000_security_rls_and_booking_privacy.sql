@@ -270,4 +270,6 @@ END; $$;
 REVOKE ALL ON FUNCTION public.book_fixed_client(uuid, uuid, text, text, integer, text, date, date) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.book_fixed_client(uuid, uuid, text, text, integer, text, date, date) TO authenticated;
 
+NOTIFY pgrst, 'reload schema';
+
 COMMIT;
