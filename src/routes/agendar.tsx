@@ -271,9 +271,15 @@ function Agendar() {
           <p className="mt-2 text-sm text-muted-foreground">
             Já avisamos a barbearia. Te esperamos!
           </p>
+          <Link
+            to="/meus-agendamentos"
+            className="mt-8 rounded-full bg-gold px-7 py-3.5 text-sm font-semibold text-gold-foreground"
+          >
+            Consultar meus agendamentos
+          </Link>
           <a
             href="/agendar"
-            className="mt-8 rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground"
+            className="mt-3 rounded-full border border-border px-7 py-3.5 text-sm font-semibold text-foreground"
           >
             Voltar ao início
           </a>
@@ -349,6 +355,12 @@ function Agendar() {
         <Button type="button" onClick={submit} disabled={saving} className="mt-7 h-14 w-full gap-3 rounded-full bg-gold text-sm font-semibold uppercase tracking-[0.15em] text-gold-foreground hover:bg-gold/90">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Confirmar agendamento <ArrowRight className="h-4 w-4" />
         </Button>
+        <Link
+          to="/meus-agendamentos"
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-full border border-gold px-5 py-3.5 text-sm font-semibold text-gold transition-colors hover:bg-gold/10"
+        >
+          <Calendar className="h-4 w-4" /> Meus agendamentos
+        </Link>
         <CancelBooking />
         <p className="mt-8 text-center text-xs uppercase tracking-[0.3em] text-gold">— &nbsp; Desde 2015 &nbsp; —</p>
       </main>
