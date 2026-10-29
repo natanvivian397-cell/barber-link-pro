@@ -108,6 +108,10 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.create_booking_for_device(uuid, text, text, uuid, text, numeric, date, text, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.find_my_bookings_by_device(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.claim_my_bookings_for_device(text, text, text) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.create_booking_for_device(uuid, text, text, uuid, text, numeric, date, text, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.find_my_bookings_by_device(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_my_bookings_for_device(text, text, text) TO anon, authenticated;
