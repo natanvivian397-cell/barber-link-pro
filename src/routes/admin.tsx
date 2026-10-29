@@ -379,7 +379,28 @@ function Admin() {
   }
 
   const adminEmails = ["natanvivian39@gmail.com", "douglasmachadodigao@gmail.com"];
-  const isAuthorizedAdmin = !!session?.user.email && adminEmails.includes(session.user.email.toLowerCase());
+  const isAuthorizedAdmin = !!session?.user.email && adminEmails.includes(session.user.email.trim().toLowerCase());
+
+  // An authenticated but unauthorized account must never see the admin panel.
+  if (session && !isAuthorizedAdmin) {
+    return (
+      <div className="min-h-screen">
+        <BrandHeader back />
+        <div className="mx-auto max-w-sm px-6 pt-12">
+          <p className="eyebrow">Área restrita</p>
+          <h1 className="mt-2 text-2xl font-bold">Acesso não autorizado</h1>
+          <p className="mt-3 text-sm text-muted-foreground">Este painel está disponível somente para os administradores autorizados.</p>
+          <button
+            type="button"
+            onClick={() => { void supabase.auth.signOut(); }}
+            className="mt-6 w-full rounded-full border border-border px-5 py-3 text-sm font-semibold"
+          >
+            Sair
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return session && isAuthorizedAdmin ? <Panel /> : <LoginCard />;
 }
@@ -387,23 +408,20 @@ function Admin() {
 function LoginCard() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"login" | "signup">("login");
   const [busy, setBusy] = useState(false);
 
   async function submit() {
     setBusy(true);
-    if (mode === "login") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) toast.error("E-mail ou senha inválidos.");
-    } else {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: `${window.location.origin}/admin` },
-      });
-      if (error) toast.error(error.message);
-      else if (!data.session) toast.success("Conta criada. Confirme pelo e-mail para entrar.");
+    const normalizedEmail = email.trim().toLowerCase();
+    const adminEmails = ["natanvivian39@gmail.com", "douglasmachadodigao@gmail.com"];
+    if (!adminEmails.includes(normalizedEmail)) {
+      toast.error("Este e-mail não está autorizado a acessar o painel.");
+      setBusy(false);
+      return;
     }
+
+    const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+    if (error) toast.error("E-mail ou senha inválidos.");
     setBusy(false);
   }
 
@@ -412,9 +430,7 @@ function LoginCard() {
       <BrandHeader back />
       <div className="mx-auto max-w-sm px-6 pt-12">
         <p className="eyebrow">Área da barbearia</p>
-        <h1 className="mt-2 text-3xl font-bold">
-          {mode === "login" ? "Entrar no painel" : "Criar acesso"}
-        </h1>
+        <h1 className="mt-2 text-3xl font-bold">Entrar no painel</h1>
         <div className="mt-6 space-y-3">
           <input
             value={email}
@@ -437,14 +453,7 @@ function LoginCard() {
             className="flex w-full items-center justify-center gap-2 rounded-full bg-primary px-7 py-4 text-sm font-semibold tracking-[0.12em] text-primary-foreground disabled:opacity-60"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {mode === "login" ? "ENTRAR" : "CRIAR CONTA"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode(mode === "login" ? "signup" : "login")}
-            className="w-full text-center text-sm text-muted-foreground underline"
-          >
-            {mode === "login" ? "Primeiro acesso? Criar conta" : "Já tenho conta"}
+            ENTRAR
           </button>
         </div>
       </div>
