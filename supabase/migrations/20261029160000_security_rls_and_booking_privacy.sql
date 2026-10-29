@@ -52,6 +52,18 @@ CREATE POLICY blocks_admin_manage ON public.schedule_blocks
   USING (lower(coalesce(auth.jwt() ->> 'email', '')) IN ('natanvivian39@gmail.com', 'douglasmachadodigao@gmail.com'))
   WITH CHECK (lower(coalesce(auth.jwt() ->> 'email', '')) IN ('natanvivian39@gmail.com', 'douglasmachadodigao@gmail.com'));
 
+-- The holiday trigger must still be able to read the closure calendar under RLS.
+DO $
+BEGIN
+  IF to_regclass('public.booking_blocked_dates') IS NOT NULL THEN
+    ALTER TABLE public.booking_blocked_dates ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS blocked_dates_public_read ON public.booking_blocked_dates;
+    CREATE POLICY blocked_dates_public_read ON public.booking_blocked_dates
+      FOR SELECT TO anon, authenticated USING (true);
+    GRANT SELECT ON public.booking_blocked_dates TO anon, authenticated;
+  END IF;
+END $;
+
 -- Customers may create a booking, but may not read the underlying bookings table.
 -- Only allowlisted admins can read or change existing booking rows.
 CREATE POLICY bookings_public_insert ON public.bookings
