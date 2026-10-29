@@ -113,7 +113,7 @@ function Agendar() {
     enabled: !!barberId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("bookings")
+        .from("booking_slots" as any)
         .select("booking_time, duration_min, status")
         .eq("booking_date", date)
         .eq("barber_id", barberId ?? "");
@@ -142,7 +142,7 @@ function Agendar() {
   useEffect(() => {
     const channel = supabase
       .channel("bookings-live-agendar")
-      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "booking_slot_events" as any }, () => {
         refetchTaken();
       })
       .subscribe();
