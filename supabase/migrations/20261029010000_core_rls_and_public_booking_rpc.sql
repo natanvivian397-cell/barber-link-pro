@@ -9,6 +9,22 @@ ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.schedule_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 
+-- Remove any legacy permissive policies on these tables before installing the
+-- known policy set. PostgreSQL combines permissive policies with OR semantics.
+DO $
+DECLARE p record;
+BEGIN
+  FOR p IN
+    SELECT schemaname, tablename, policyname
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('barbers', 'services', 'schedule_settings', 'bookings')
+  LOOP
+    EXECUTE format('DROP POLICY %I ON %I.%I', p.policyname, p.schemaname, p.tablename);
+  END LOOP;
+END;
+$;
+
 DROP POLICY IF EXISTS barbers_public_active_read ON public.barbers;
 DROP POLICY IF EXISTS barbers_admin_manage ON public.barbers;
 CREATE POLICY barbers_public_active_read ON public.barbers
