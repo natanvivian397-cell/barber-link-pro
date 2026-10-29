@@ -115,3 +115,41 @@ REVOKE ALL ON FUNCTION public.claim_my_bookings_for_device(text, text, text) FRO
 GRANT EXECUTE ON FUNCTION public.create_booking_for_device(uuid, text, text, uuid, text, numeric, date, text, text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.find_my_bookings_by_device(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_my_bookings_for_device(text, text, text) TO anon, authenticated;
+
+
+-- Allow a booking to be cancelled only from the browser token already linked to it.
+CREATE OR REPLACE FUNCTION public.cancel_my_booking_by_device(
+  _booking_id uuid,
+  _device_token text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  cancelled_id uuid;
+BEGIN
+  IF length(coalesce(_device_token, '')) < 50 OR length(_device_token) > 200 THEN
+    RETURN false;
+  END IF;
+
+  UPDATE public.bookings b
+  SET status = 'cancelado'
+  WHERE b.id = _booking_id
+    AND EXISTS (
+      SELECT 1
+      FROM public.booking_device_access d
+      WHERE d.booking_id = b.id
+        AND d.device_token = _device_token
+    )
+    AND b.status NOT IN ('cancelado', 'concluido')
+    AND b.booking_date >= (now() AT TIME ZONE 'America/Sao_Paulo')::date
+  RETURNING b.id INTO cancelled_id;
+
+  RETURN cancelled_id IS NOT NULL;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.cancel_my_booking_by_device(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.cancel_my_booking_by_device(uuid, text) TO anon, authenticated;
