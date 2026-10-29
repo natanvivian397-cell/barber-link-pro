@@ -36,10 +36,11 @@ DROP POLICY IF EXISTS bookings_admin_manage ON public.bookings;
 CREATE POLICY bookings_admin_manage ON public.bookings
   FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
+REVOKE ALL ON public.barbers, public.services, public.schedule_settings FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.barbers, public.services, public.schedule_settings TO anon, authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.barbers, public.services, public.schedule_settings TO authenticated;
+REVOKE ALL ON public.bookings FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.bookings TO authenticated;
-REVOKE ALL ON public.bookings FROM anon;
 
 -- Public availability endpoint: returns only the minimum fields needed to render slots.
 CREATE OR REPLACE FUNCTION public.public_booking_availability(_barber_id uuid, _booking_date date)
