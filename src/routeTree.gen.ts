@@ -45,16 +45,18 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/agendar': typeof AgendarRoute
+  '/meus-agendamentos': typeof MeusAgendamentosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/agendar': typeof AgendarRoute
+  '/meus-agendamentos': typeof MeusAgendamentosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/agendar'
+  fullPaths: '/' | '/admin' | '/agendar' | '/meus-agendamentos'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/admin' | '/agendar' | '/meus-agendamentos'
   id: '__root__' | '/' | '/admin' | '/agendar' | '/meus-agendamentos'
