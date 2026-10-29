@@ -12,7 +12,7 @@ BEGIN
     SELECT schemaname, tablename, policyname
     FROM pg_policies
     WHERE schemaname = 'public'
-      AND tablename IN ('services', 'barbers', 'schedule_settings', 'schedule_blocks', 'bookings', 'booking_blocked_dates')
+      AND tablename IN ('services', 'barbers', 'schedule_settings', 'schedule_blocks', 'bookings')
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I', p.policyname, p.schemaname, p.tablename);
   END LOOP;
@@ -157,116 +157,9 @@ CREATE POLICY catalog_photos_delete_allowlist_guard ON storage.objects
   AS RESTRICTIVE FOR DELETE TO anon, authenticated
   USING (bucket_id <> 'catalog-photos' OR lower(coalesce(auth.jwt() ->> 'email', '')) IN ('natanvivian39@gmail.com', 'douglasmachadodigao@gmail.com'));
 
--- Validate authoritative booking data server-side instead of trusting client-submitted prices/durations.
-CREATE OR REPLACE FUNCTION public.validate_booking_insert()
-RETURNS trigger
-LANGUAGE plpgsql
-SET search_path = public
-AS $$
-DECLARE
-  svc public.services%ROWTYPE;
-  day public.schedule_settings%ROWTYPE;
-  start_minutes integer;
-  end_minutes integer;
-  requested_minutes integer;
-  local_today date := (now() AT TIME ZONE 'America/Sao_Paulo')::date;
-  local_time time := (now() AT TIME ZONE 'America/Sao_Paulo')::time;
-BEGIN
-  IF length(trim(coalesce(NEW.customer_name, ''))) < 2
-     OR length(regexp_replace(coalesce(NEW.customer_phone, ''), '\D', '', 'g')) < 10 THEN
-    RAISE EXCEPTION 'Informe nome e WhatsApp válidos';
-  END IF;
-
-  IF NEW.barber_id IS NULL OR NOT EXISTS (
-    SELECT 1 FROM public.barbers WHERE id = NEW.barber_id AND active = true
-  ) THEN
-    RAISE EXCEPTION 'Barbeiro indisponível';
-  END IF;
-
-  SELECT * INTO svc FROM public.services WHERE id = NEW.service_id AND active = true;
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Serviço indisponível';
-  END IF;
-
-  IF NEW.booking_date IS NULL OR NEW.booking_time IS NULL OR NEW.booking_date < local_today OR NEW.booking_time !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' THEN
-    RAISE EXCEPTION 'Data ou horário inválido';
-  END IF;
-
-  SELECT * INTO day FROM public.schedule_settings
-  WHERE barber_id = NEW.barber_id
-    AND weekday = extract(dow FROM NEW.booking_date)::integer
-    AND is_open = true;
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Barbeiro fechado nesta data';
-  END IF;
-
-  requested_minutes := split_part(NEW.booking_time, ':', 1)::integer * 60
-                     + split_part(NEW.booking_time, ':', 2)::integer;
-  start_minutes := split_part(day.morning_start, ':', 1)::integer * 60
-                 + split_part(day.morning_start, ':', 2)::integer;
-  end_minutes := split_part(day.morning_end, ':', 1)::integer * 60
-               + split_part(day.morning_end, ':', 2)::integer;
-
-  IF NOT (
-    (requested_minutes >= start_minutes
-      AND requested_minutes + svc.duration_min <= end_minutes
-      AND mod(requested_minutes - start_minutes, greatest(day.slot_min, 1)) = 0)
-    OR
-    (requested_minutes >= split_part(day.afternoon_start, ':', 1)::integer * 60
-                          + split_part(day.afternoon_start, ':', 2)::integer
-      AND requested_minutes + svc.duration_min <= split_part(day.afternoon_end, ':', 1)::integer * 60
-                                                   + split_part(day.afternoon_end, ':', 2)::integer
-      AND mod(requested_minutes - (split_part(day.afternoon_start, ':', 1)::integer * 60
-                                   + split_part(day.afternoon_start, ':', 2)::integer),
-              greatest(day.slot_min, 1)) = 0)
-  ) THEN
-    RAISE EXCEPTION 'Horário fora do expediente';
-  END IF;
-
-  IF NEW.booking_date = local_today AND NEW.booking_time::time <= local_time THEN
-    RAISE EXCEPTION 'Horário já passou';
-  END IF;
-
-  -- Service name, price and duration are read from the database, never trusted from the browser.
-  NEW.service_name := svc.name;
-  NEW.price := svc.price;
-  NEW.duration_min := svc.duration_min;
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS bookings_validate_insert ON public.bookings;
-CREATE TRIGGER bookings_validate_insert
-BEFORE INSERT ON public.bookings
-FOR EACH ROW EXECUTE FUNCTION public.validate_booking_insert();
-
--- Lock down the recurring booking RPC to the same allowlisted admin accounts.
-CREATE OR REPLACE FUNCTION public.book_fixed_client(_barber uuid, _service uuid, _name text, _phone text, _weekday integer, _time text, _start date, _end date)
-RETURNS integer LANGUAGE plpgsql SECURITY INVOKER SET search_path = public AS $$
-DECLARE svc public.services%ROWTYPE; day public.schedule_settings%ROWTYPE; d date; n integer := 0; minutes integer;
-BEGIN
- IF lower(coalesce(auth.jwt() ->> 'email', '')) NOT IN ('natanvivian39@gmail.com', 'douglasmachadodigao@gmail.com') THEN
-   RAISE EXCEPTION 'Acesso não autorizado';
- END IF;
- IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Entre no painel'; END IF;
- IF length(trim(_name)) < 2 OR length(regexp_replace(_phone, '\D', '', 'g')) < 10 THEN RAISE EXCEPTION 'Informe nome e WhatsApp'; END IF;
- IF _weekday NOT BETWEEN 0 AND 6 OR _start IS NULL OR _end IS NULL OR _start < (now() AT TIME ZONE 'America/Sao_Paulo')::date OR _end < _start OR _end > _start + 366 THEN RAISE EXCEPTION 'Escolha um período futuro de até um ano'; END IF;
- IF _time IS NULL OR _time !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' THEN RAISE EXCEPTION 'Horário inválido'; END IF;
- SELECT * INTO svc FROM public.services WHERE id = _service AND active;
- IF NOT FOUND THEN RAISE EXCEPTION 'Escolha um serviço ativo'; END IF;
- IF NOT EXISTS(SELECT 1 FROM public.barbers WHERE id = _barber AND active) THEN RAISE EXCEPTION 'Escolha um barbeiro ativo'; END IF;
- SELECT * INTO day FROM public.schedule_settings WHERE barber_id = _barber AND weekday = _weekday AND is_open;
- IF NOT FOUND THEN RAISE EXCEPTION 'Dia fechado'; END IF;
- minutes := split_part(_time, ':', 1)::integer * 60 + split_part(_time, ':', 2)::integer;
- IF NOT ((minutes >= split_part(day.morning_start, ':', 1)::integer * 60 + split_part(day.morning_start, ':', 2)::integer AND minutes + svc.duration_min <= split_part(day.morning_end, ':', 1)::integer * 60 + split_part(day.morning_end, ':', 2)::integer) OR (minutes >= split_part(day.afternoon_start, ':', 1)::integer * 60 + split_part(day.afternoon_start, ':', 2)::integer AND minutes + svc.duration_min <= split_part(day.afternoon_end, ':', 1)::integer * 60 + split_part(day.afternoon_end, ':', 2)::integer)) THEN RAISE EXCEPTION 'Serviço fora do expediente'; END IF;
- FOR d IN SELECT x::date FROM generate_series(_start::timestamp, _end::timestamp, interval '1 day') x WHERE extract(dow FROM x) = _weekday LOOP
-  IF d = (now() AT TIME ZONE 'America/Sao_Paulo')::date AND _time::time <= (now() AT TIME ZONE 'America/Sao_Paulo')::time THEN RAISE EXCEPTION 'Horário já passou'; END IF;
-  INSERT INTO public.bookings(barber_id, service_id, service_name, price, duration_min, customer_name, customer_phone, booking_date, booking_time, notes) VALUES (_barber, svc.id, svc.name, svc.price, svc.duration_min, trim(_name), _phone, d, _time, 'Cliente fixo · semanal');
-  n := n + 1;
- END LOOP;
- IF n = 0 THEN RAISE EXCEPTION 'Nenhuma ocorrência neste período'; END IF;
- RETURN n;
-END; $$;
+-- Keep the existing recurring-client function implementation unchanged to avoid
+-- altering schedule, conflict, or blocked-slot behavior. It is SECURITY INVOKER,
+-- and the RLS policies above restrict its writes to the two allowlisted admins.
 REVOKE ALL ON FUNCTION public.book_fixed_client(uuid, uuid, text, text, integer, text, date, date) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.book_fixed_client(uuid, uuid, text, text, integer, text, date, date) TO authenticated;
 
