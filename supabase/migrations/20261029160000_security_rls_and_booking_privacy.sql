@@ -145,16 +145,16 @@ GRANT EXECUTE ON FUNCTION public.cancel_my_booking(uuid, text, text) TO anon, au
 -- Restrictive guards protect the catalog bucket even if another permissive Storage policy exists.
 DROP POLICY IF EXISTS catalog_photos_upload_allowlist_guard ON storage.objects;
 CREATE POLICY catalog_photos_upload_allowlist_guard ON storage.objects
-  AS RESTRICTIVE FOR INSERT TO authenticated
+  AS RESTRICTIVE FOR INSERT TO anon, authenticated
   WITH CHECK (bucket_id <> 'catalog-photos' OR lower(coalesce(auth.jwt() ->> 'email', '')) IN ('natanvivian39@gmail.com', 'douglasmachadodigao@gmail.com'));
 DROP POLICY IF EXISTS catalog_photos_update_allowlist_guard ON storage.objects;
 CREATE POLICY catalog_photos_update_allowlist_guard ON storage.objects
-  AS RESTRICTIVE FOR UPDATE TO authenticated
+  AS RESTRICTIVE FOR UPDATE TO anon, authenticated
   USING (bucket_id <> 'catalog-photos' OR lower(coalesce(auth.jwt() ->> 'email', '')) IN ('natanvivian39@gmail.com', 'douglasmachadodigao@gmail.com'))
   WITH CHECK (bucket_id <> 'catalog-photos' OR lower(coalesce(auth.jwt() ->> 'email', '')) IN ('natanvivian39@gmail.com', 'douglasmachadodigao@gmail.com'));
 DROP POLICY IF EXISTS catalog_photos_delete_allowlist_guard ON storage.objects;
 CREATE POLICY catalog_photos_delete_allowlist_guard ON storage.objects
-  AS RESTRICTIVE FOR DELETE TO authenticated
+  AS RESTRICTIVE FOR DELETE TO anon, authenticated
   USING (bucket_id <> 'catalog-photos' OR lower(coalesce(auth.jwt() ->> 'email', '')) IN ('natanvivian39@gmail.com', 'douglasmachadodigao@gmail.com'));
 
 -- Validate authoritative booking data server-side instead of trusting client-submitted prices/durations.
@@ -172,6 +172,11 @@ DECLARE
   local_today date := (now() AT TIME ZONE 'America/Sao_Paulo')::date;
   local_time time := (now() AT TIME ZONE 'America/Sao_Paulo')::time;
 BEGIN
+  IF length(trim(coalesce(NEW.customer_name, ''))) < 2
+     OR length(regexp_replace(coalesce(NEW.customer_phone, ''), '\\D', '', 'g')) < 10 THEN
+    RAISE EXCEPTION 'Informe nome e WhatsApp válidos';
+  END IF;
+
   IF NEW.barber_id IS NULL OR NOT EXISTS (
     SELECT 1 FROM public.barbers WHERE id = NEW.barber_id AND active = true
   ) THEN
