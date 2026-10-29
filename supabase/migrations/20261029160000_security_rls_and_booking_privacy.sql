@@ -80,7 +80,7 @@ CREATE OR REPLACE VIEW public.booking_slots WITH (security_barrier = true) AS
 
 GRANT SELECT ON public.services, public.barbers, public.schedule_settings, public.schedule_blocks TO anon, authenticated;
 GRANT SELECT, UPDATE, DELETE ON public.bookings TO authenticated;
-REVOKE ALL ON public.bookings FROM anon, authenticated;
+REVOKE ALL ON public.bookings FROM PUBLIC, anon, authenticated;
 GRANT SELECT, UPDATE, DELETE ON public.bookings TO authenticated;
 GRANT INSERT (barber_id, customer_name, customer_phone, service_id, service_name, price, booking_date, booking_time, notes)
   ON public.bookings TO anon, authenticated;
