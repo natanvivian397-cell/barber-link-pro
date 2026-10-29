@@ -175,3 +175,53 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.create_public_booking(uuid, uuid, text, text, date, text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.create_public_booking(uuid, uuid, text, text, date, text, text) TO anon, authenticated;
+
+
+-- Harden the legacy customer lookup/cancel RPCs against oversized inputs and
+-- unsafe search_path resolution. Ownership is still proven by name + phone only;
+-- an OTP flow is required to eliminate impersonation risk.
+CREATE OR REPLACE FUNCTION public.find_my_bookings(_name text, _phone text)
+RETURNS TABLE(id uuid, service_name text, booking_date date, booking_time text)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+  SELECT b.id, b.service_name, b.booking_date, b.booking_time
+  FROM public.bookings b
+  WHERE _name IS NOT NULL
+    AND length(trim(_name)) BETWEEN 2 AND 100
+    AND length(regexp_replace(coalesce(_phone, ''), '\\D', '', 'g')) BETWEEN 10 AND 15
+    AND lower(trim(b.customer_name)) = lower(trim(_name))
+    AND regexp_replace(b.customer_phone, '\\D', '', 'g') = regexp_replace(_phone, '\\D', '', 'g')
+    AND b.status NOT IN ('cancelado', 'concluido')
+    AND b.booking_date >= (now() AT TIME ZONE 'America/Sao_Paulo')::date
+  ORDER BY b.booking_date, b.booking_time
+  LIMIT 20
+$$;
+
+CREATE OR REPLACE FUNCTION public.cancel_my_booking(_id uuid, _name text, _phone text)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE n integer;
+BEGIN
+  IF _id IS NULL OR _name IS NULL OR length(trim(_name)) NOT BETWEEN 2 AND 100
+     OR length(regexp_replace(coalesce(_phone, ''), '\\D', '', 'g')) NOT BETWEEN 10 AND 15 THEN
+    RETURN false;
+  END IF;
+
+  UPDATE public.bookings b
+  SET status = 'cancelado'
+  WHERE b.id = _id
+    AND b.id IN (SELECT f.id FROM public.find_my_bookings(_name, _phone) f);
+  GET DIAGNOSTICS n = ROW_COUNT;
+  RETURN n > 0;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.find_my_bookings(text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.cancel_my_booking(uuid, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.find_my_bookings(text, text) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.cancel_my_booking(uuid, text, text) TO anon, authenticated;
