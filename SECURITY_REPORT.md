@@ -62,3 +62,8 @@ Foi preparada na branch `security/database-rls-hardening` uma migração adicion
 - O painel no navegador só é exibido às duas contas administrativas autorizadas.
 
 Essas proteções estão em uma proposta de migração/código e **não são efetivas no site publicado até o merge, sincronização/deploy e execução da migração no Supabase**. Como não há execução de testes nem acesso ao banco de produção neste ambiente, não se deve aplicar a migração sem testar o fluxo completo em uma cópia/ambiente de teste primeiro.
+
+
+## Monitoramento contínuo preparado
+
+Foram adicionados workflows do GitHub Actions para executar lint/build em pull requests e para análise estática CodeQL em JavaScript/TypeScript. Neste momento, o GitHub não retornou resultados de execução/checks para a branch; portanto, não há build ou análise CodeQL aprovados a reportar ainda.
