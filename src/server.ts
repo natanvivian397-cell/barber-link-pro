@@ -40,6 +40,7 @@ function applySecurityHeaders(response: Response): Response {
 
   // Safe baseline headers that do not alter app routes, scheduling, or visual design.
   headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("Strict-Transport-Security", "max-age=31536000");
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
 
