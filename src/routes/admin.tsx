@@ -378,29 +378,44 @@ function Admin() {
     );
   }
 
-  return session ? <Panel /> : <LoginCard />;
+  const adminEmails = ["douglasmachadodigao@gmail.com", "natanyvivian39@gmail.com"];
+  const authorized = !!session?.user.email && adminEmails.includes(session.user.email.toLowerCase());
+
+  if (session && !authorized) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
+        <h1 className="text-xl font-bold">Acesso não autorizado</h1>
+        <p className="max-w-sm text-sm text-muted-foreground">Esta conta não tem permissão para administrar a barbearia.</p>
+        <button
+          type="button"
+          onClick={() => void supabase.auth.signOut()}
+          className="rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground"
+        >
+          Sair da conta
+        </button>
+      </div>
+    );
+  }
+
+  return session && authorized ? <Panel /> : <LoginCard />;
 }
 
 function LoginCard() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"login" | "signup">("login");
   const [busy, setBusy] = useState(false);
 
   async function submit() {
-    setBusy(true);
-    if (mode === "login") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) toast.error("E-mail ou senha inválidos.");
-    } else {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: `${window.location.origin}/admin` },
-      });
-      if (error) toast.error(error.message);
-      else if (!data.session) toast.success("Conta criada. Confirme pelo e-mail para entrar.");
+    if (!email.trim() || !password) {
+      toast.error("Informe e-mail e senha.");
+      return;
     }
+    setBusy(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+    if (error) toast.error("E-mail ou senha inválidos.");
     setBusy(false);
   }
 
@@ -409,14 +424,16 @@ function LoginCard() {
       <BrandHeader back />
       <div className="mx-auto max-w-sm px-6 pt-12">
         <p className="eyebrow">Área da barbearia</p>
-        <h1 className="mt-2 text-3xl font-bold">
-          {mode === "login" ? "Entrar no painel" : "Criar acesso"}
-        </h1>
+        <h1 className="mt-2 text-3xl font-bold">Entrar no painel</h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Acesso restrito a contas administrativas autorizadas.
+        </p>
         <div className="mt-6 space-y-3">
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             type="email"
+            autoComplete="username"
             placeholder="E-mail"
             className="w-full rounded-2xl border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-primary"
           />
@@ -424,6 +441,7 @@ function LoginCard() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type="password"
+            autoComplete="current-password"
             placeholder="Senha"
             className="w-full rounded-2xl border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-primary"
           />
@@ -434,14 +452,7 @@ function LoginCard() {
             className="flex w-full items-center justify-center gap-2 rounded-full bg-primary px-7 py-4 text-sm font-semibold tracking-[0.12em] text-primary-foreground disabled:opacity-60"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {mode === "login" ? "ENTRAR" : "CRIAR CONTA"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode(mode === "login" ? "signup" : "login")}
-            className="w-full text-center text-sm text-muted-foreground underline"
-          >
-            {mode === "login" ? "Primeiro acesso? Criar conta" : "Já tenho conta"}
+            ENTRAR
           </button>
         </div>
       </div>
