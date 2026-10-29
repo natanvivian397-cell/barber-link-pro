@@ -51,3 +51,14 @@ Foi preparada na branch `security/database-rls-hardening` uma migração adicion
 - Restringir a exibição do painel no cliente às duas contas autorizadas.
 
 **Estado:** esta etapa ainda está em branch de trabalho e não deve ser tratada como ativa em produção até revisão, merge e aplicação no Supabase. Como não há conexão administrativa confirmada com o Supabase neste ambiente, as políticas efetivas do banco e a execução da migração continuam sem verificação. A mudança requer testes de regressão do agendamento público, cancelamento, agenda administrativa, clientes fixos, fotos e atualizações em tempo real.
+
+
+## Proteções adicionais incluídas nesta proposta
+
+- Cabeçalho HSTS para orientar navegadores a manter o acesso via HTTPS.
+- A rota de agendamento passa a consultar uma view pública com apenas horário, data, barbeiro, duração e status; os dados completos do cliente ficam fora da leitura pública.
+- Atualizações de disponibilidade em tempo real usam uma tabela-sinal sem nome, telefone, observações ou preço do cliente.
+- A validação de inserção no banco confere contato, barbeiro/serviço ativos, expediente e intervalo, e substitui nome/preço/duração do serviço por valores oficiais do banco.
+- O painel no navegador só é exibido às duas contas administrativas autorizadas.
+
+Essas proteções estão em uma proposta de migração/código e **não são efetivas no site publicado até o merge, sincronização/deploy e execução da migração no Supabase**. Como não há execução de testes nem acesso ao banco de produção neste ambiente, não se deve aplicar a migração sem testar o fluxo completo em uma cópia/ambiente de teste primeiro.
