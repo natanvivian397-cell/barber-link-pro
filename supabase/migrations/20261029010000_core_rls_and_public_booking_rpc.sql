@@ -134,6 +134,17 @@ BEGIN
     RAISE EXCEPTION 'Horário já passou';
   END IF;
 
+  IF EXISTS (
+    SELECT 1
+    FROM public.schedule_blocks sb
+    WHERE sb.barber_id = _barber_id
+      AND sb.booking_date = _booking_date
+      AND (split_part(sb.booking_time, ':', 1)::integer * 60 + split_part(sb.booking_time, ':', 2)::integer) < end_min
+      AND (split_part(sb.booking_time, ':', 1)::integer * 60 + split_part(sb.booking_time, ':', 2)::integer) + sb.duration_min > start_min
+  ) THEN
+    RAISE EXCEPTION 'Horário bloqueado';
+  END IF;
+
   INSERT INTO public.bookings (
     barber_id, service_id, service_name, price, duration_min,
     customer_name, customer_phone, booking_date, booking_time, notes
