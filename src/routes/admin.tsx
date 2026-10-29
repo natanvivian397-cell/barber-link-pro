@@ -359,27 +359,43 @@ function ScheduleEditor({ barberId }: { barberId: string }) {
 
 function Admin() {
   const [session, setSession] = useState<Session | null>(null);
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    let alive = true;
+    async function verify(nextSession: Session | null) {
+      if (!alive) return;
+      setSession(nextSession);
+      if (!nextSession) {
+        setAuthorized(null);
+        setReady(true);
+        return;
+      }
+      setAuthorized(null);
+      const { data, error } = await (supabase as any).rpc("is_admin");
+      if (!alive) return;
+      setAuthorized(!error && data === true);
       setReady(true);
+    }
+
+    supabase.auth.getSession().then(({ data }) => void verify(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      void verify(nextSession);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      alive = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
-  if (!ready) {
+  if (!ready || (session && authorized === null)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
-
-  const adminEmails = ["douglasmachadodigao@gmail.com", "natanyvivian39@gmail.com"];
-  const authorized = !!session?.user.email && adminEmails.includes(session.user.email.toLowerCase());
 
   if (session && !authorized) {
     return (
