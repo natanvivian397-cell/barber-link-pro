@@ -27,6 +27,16 @@ import {
 
 type SearchParams = { servico: string | undefined };
 
+function slotOverlapsBooking(slot: string, duration: number, bookings: Taken[]) {
+  const [hour, minute] = slot.split(":").map(Number);
+  const start = hour * 60 + minute;
+  return bookings.some((booking) => {
+    const [bookingHour, bookingMinute] = booking.booking_time.split(":").map(Number);
+    const bookingStart = bookingHour * 60 + bookingMinute;
+    return bookingStart < start + duration && bookingStart + (booking.duration_min || 30) > start;
+  });
+}
+
 export const Route = createFileRoute("/agendar")({
   validateSearch: (search: Record<string, unknown>): SearchParams => ({
     servico: typeof search['servico'] === "string" ? (search['servico'] as string) : undefined,
@@ -188,6 +198,12 @@ function Agendar() {
       ? []
       : blocksReady ? availableSlots(day, selectedService?.duration_min ?? 30, [...(taken ?? []), ...(blocked ?? [])], date) : []
     : isClosedDay ? [] : buildSlots(day);
+  const candidateSlots = barberId && blocksReady && taken !== undefined
+    ? availableSlots(day, selectedService?.duration_min ?? 30, [], date)
+    : [];
+  const visibleSlots = candidateSlots.filter((slot) =>
+    slots.includes(slot) || slotOverlapsBooking(slot, selectedService?.duration_min ?? 30, taken ?? []),
+  );
   const days = Array.from({ length: 30 }, (_, i) => addDaysISO(todayISO(), i));
 
   useEffect(() => {
@@ -335,9 +351,12 @@ function Agendar() {
 
         <section className="mt-9">
           <h2 className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">3. &nbsp; Escolha o horário</h2>
-          {!barberId ? <p className="mt-4 text-sm text-muted-foreground">Escolha o barbeiro para ver os horários livres.</p> : slots.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">{day?.is_open === false ? "A barbearia não atende nesse dia. Escolha outra data." : "Sem horários livres nesse dia. Escolha outra data."}</p> : null}
+          {!barberId ? <p className="mt-4 text-sm text-muted-foreground">Escolha o barbeiro para ver os horários livres.</p> : visibleSlots.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">{day?.is_open === false ? "A barbearia não atende nesse dia. Escolha outra data." : "Sem horários disponíveis nesse dia. Escolha outra data."}</p> : null}
           <div className="mt-4 grid grid-cols-3 gap-2.5">
-            {(barberId ? slots : []).map((slot) => <Button key={slot} type="button" variant="outline" onClick={() => setTime(slot)} className={`h-12 rounded-full border text-sm font-medium ${time === slot ? "border-gold bg-gold/10 text-gold" : "border-border bg-card text-foreground"}`}>{slot}</Button>)}
+            {visibleSlots.map((slot) => {
+              const occupied = slotOverlapsBooking(slot, selectedService?.duration_min ?? 30, taken ?? []);
+              return <Button key={slot} type="button" variant="outline" disabled={occupied} onClick={() => setTime(slot)} aria-label={occupied ? `${slot}, horário ocupado` : slot} className={`h-12 rounded-full border text-sm font-medium ${occupied ? "cursor-not-allowed border-border bg-muted text-muted-foreground line-through opacity-60" : time === slot ? "border-gold bg-gold/10 text-gold" : "border-border bg-card text-foreground"}`}>{slot}</Button>;
+            })}
           </div>
         </section>
 
