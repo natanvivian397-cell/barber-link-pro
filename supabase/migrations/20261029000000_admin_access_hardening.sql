@@ -62,5 +62,7 @@ CREATE POLICY "Admins can delete catalog photos"
   ON storage.objects FOR DELETE TO authenticated
   USING (bucket_id = 'catalog-photos' AND public.is_admin());
 
--- Note: policies on bookings, barbers, services, settings, and cancellation RPCs
--- must also be audited and hardened before this security review is considered complete.
+-- Core table policies and public booking creation are hardened in the next migration.
+-- Customer cancellation still uses name + phone as proof of ownership in the legacy
+-- public RPC. For stronger assurance, replace this with an OTP verification flow before
+-- claiming full account-level security; do not expose the booking table directly.
