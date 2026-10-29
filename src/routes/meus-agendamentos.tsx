@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarDays, Clock3, Search, Scissors, ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -30,7 +30,7 @@ function MeusAgendamentos() {
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function searchBookings(event: React.FormEvent<HTMLFormElement>) {
+  async function searchBookings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (name.trim().length < 2 || phone.replace(/\\D/g, "").length < 10) {
       toast.error("Informe o nome e o WhatsApp usados no agendamento.");
