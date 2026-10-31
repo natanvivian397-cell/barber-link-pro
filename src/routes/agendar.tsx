@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Calendar, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { getDeviceToken } from "@/lib/deviceIdentity";
 import { BrandHeader } from "@/components/BrandHeader";
 import { Button } from "@/components/ui/button";
 import { CatalogPhoto } from "@/components/CatalogPhoto";
@@ -70,8 +69,26 @@ function Agendar() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"signup" | "login">("signup");
+  const [authenticatedEmail, setAuthenticatedEmail] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState<null | { time: string; date: string; service: string }>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setAuthenticatedEmail(data.session?.user.email ?? null);
+    });
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthenticatedEmail(session?.user.email ?? null);
+    });
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   const { data: services, refetch: refetchServices } = useQuery({
     queryKey: ["services"],
@@ -121,14 +138,14 @@ function Agendar() {
   const { data: taken, refetch: refetchTaken } = useQuery({
     queryKey: ["taken", date, barberId],
     enabled: !!barberId,
+    refetchInterval: 15000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("booking_time, duration_min, status")
-        .eq("booking_date", date)
-        .eq("barber_id", barberId ?? "");
+      const { data, error } = await supabase.rpc("get_public_booking_slots", {
+        _barber_id: barberId!,
+        _booking_date: date,
+      });
       if (error) throw error;
-      return (data ?? []).filter((b) => b.status !== "cancelado") as Taken[];
+      return (data ?? []) as Taken[];
     },
   });
 
@@ -148,18 +165,6 @@ function Agendar() {
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [refetchBlocked]);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel("bookings-live-agendar")
-      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => {
-        refetchTaken();
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [refetchTaken]);
 
   const { data: schedule, refetch: refetchSchedule } = useQuery({
     queryKey: ["schedule", barberId],
@@ -245,24 +250,63 @@ function Agendar() {
       return;
     }
 
-    const deviceToken = getDeviceToken();
-    if (!deviceToken) {
-      toast.error("Não foi possível reconhecer este dispositivo. Atualize a página e tente novamente.");
-      return;
+    setSaving(true);
+
+    let { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) {
+        setSaving(false);
+        toast.error("Informe um e-mail válido para proteger seus agendamentos.");
+        return;
+      }
+      if (password.length < 8) {
+        setSaving(false);
+        toast.error("Sua senha deve ter pelo menos 8 caracteres.");
+        return;
+      }
+
+      if (authMode === "signup") {
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim().toLowerCase(),
+          password,
+          options: { data: { full_name: name.trim(), phone: phone.trim() } },
+        });
+        if (error) {
+          setSaving(false);
+          toast.error(error.message.toLowerCase().includes("already registered")
+            ? "Este e-mail já possui uma conta. Selecione Entrar."
+            : "Não foi possível criar sua conta. Confira os dados e tente novamente.");
+          return;
+        }
+        sessionData = { session: data.session, user: data.user } as typeof sessionData;
+        if (!data.session) {
+          setSaving(false);
+          toast.info("Conta criada. Confirme seu e-mail pelo link enviado e depois entre para concluir o agendamento.");
+          setAuthMode("login");
+          return;
+        }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password,
+        });
+        if (error || !data.session) {
+          setSaving(false);
+          toast.error("E-mail ou senha inválidos. Tente novamente.");
+          return;
+        }
+        sessionData = { session: data.session, user: data.user } as typeof sessionData;
+      }
     }
 
-    setSaving(true);
-    const { error } = await supabase.rpc("create_booking_for_device", {
+    const { error } = await supabase.rpc("create_booking_authenticated", {
       _barber_id: barberId,
       _customer_name: name.trim(),
       _customer_phone: phone.trim(),
       _service_id: selected.id,
-      _service_name: selected.name,
-      _price: selected.price,
       _booking_date: date,
       _booking_time: time,
       _notes: notes.trim() || null,
-      _device_token: deviceToken,
     });
     setSaving(false);
 
@@ -273,7 +317,7 @@ function Agendar() {
         refetchTaken();
         return;
       }
-      toast.error("Não foi possível agendar. Tente novamente.");
+      toast.error(error.message.includes("horário") ? error.message : "Não foi possível agendar. Tente novamente.");
       return;
     }
     setDone({ time, date, service: selected.name });
@@ -376,6 +420,24 @@ function Agendar() {
           <h2 className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">5. &nbsp; Seus dados</h2>
           <input aria-label="Seu nome" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" className="w-full rounded-full border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-gold" />
           <input aria-label="WhatsApp" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="WhatsApp (51) 9 9999-9999" className="w-full rounded-full border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-gold" />
+          {authenticatedEmail ? (
+            <p className="rounded-2xl border border-gold/30 bg-gold/5 px-4 py-3 text-sm text-foreground">
+              Conta conectada: <strong>{authenticatedEmail}</strong>
+            </p>
+          ) : (
+            <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Proteja seus agendamentos</p>
+                <p className="mt-1 text-xs text-muted-foreground">Crie uma conta rápida ou entre para consultar e cancelar suas reservas com segurança.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setAuthMode("signup")} className={`rounded-full px-3 py-2 text-xs font-semibold ${authMode === "signup" ? "bg-gold text-gold-foreground" : "border border-border text-muted-foreground"}`}>Criar conta</button>
+                <button type="button" onClick={() => setAuthMode("login")} className={`rounded-full px-3 py-2 text-xs font-semibold ${authMode === "login" ? "bg-gold text-gold-foreground" : "border border-border text-muted-foreground"}`}>Já tenho conta</button>
+              </div>
+              <input aria-label="E-mail" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Seu e-mail" className="w-full rounded-full border border-border bg-background px-5 py-3.5 text-sm outline-none focus:border-gold" />
+              <input aria-label="Senha" type="password" autoComplete={authMode === "signup" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha (mínimo 8 caracteres)" className="w-full rounded-full border border-border bg-background px-5 py-3.5 text-sm outline-none focus:border-gold" />
+            </div>
+          )}
           <textarea aria-label="Observação" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observação (opcional)" rows={2} className="w-full resize-none rounded-2xl border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-gold" />
         </section>
         <Button type="button" onClick={submit} disabled={saving} className="mt-7 h-14 w-full gap-3 rounded-full bg-gold text-sm font-semibold uppercase tracking-[0.15em] text-gold-foreground hover:bg-gold/90">
