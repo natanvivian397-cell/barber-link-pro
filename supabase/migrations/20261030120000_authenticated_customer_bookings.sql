@@ -22,9 +22,9 @@ BEGIN
   END LOOP;
 END $$;
 
-REVOKE ALL ON TABLE public.bookings FROM anon;
+REVOKE ALL ON TABLE public.bookings FROM PUBLIC, anon;
 GRANT SELECT, INSERT, DELETE ON TABLE public.bookings TO authenticated;
-REVOKE UPDATE ON TABLE public.bookings FROM authenticated;
+REVOKE UPDATE ON TABLE public.bookings FROM PUBLIC, anon, authenticated;
 GRANT UPDATE (status) ON TABLE public.bookings TO authenticated;
 
 CREATE POLICY bookings_select_owner_or_admin
