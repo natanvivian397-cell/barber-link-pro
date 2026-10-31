@@ -133,7 +133,7 @@ CREATE OR REPLACE FUNCTION public.bookings_prevent_overlap()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = ''
-AS $
+AS $overlap$
 DECLARE
   v_start integer;
   v_end integer;
@@ -178,7 +178,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$;
+$overlap$;
 
 -- Ensure manual schedule blocks are enforced by the database, not only by the UI.
 -- Recreate these guards here because the original definitions live in the legacy
