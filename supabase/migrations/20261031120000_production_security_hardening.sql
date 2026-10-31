@@ -376,7 +376,7 @@ $$;
 
 DROP TRIGGER IF EXISTS bookings_prevent_recurring_holiday ON public.bookings;
 CREATE TRIGGER bookings_prevent_recurring_holiday
-BEFORE INSERT OR UPDATE OF booking_date, status ON public.bookings
+BEFORE INSERT OR UPDATE OF booking_date ON public.bookings
 FOR EACH ROW EXECUTE FUNCTION public.prevent_recurring_holiday_booking();
 
 -- Explicitly preserve the admin allowlist on Storage write policies.
