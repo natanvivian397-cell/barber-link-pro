@@ -121,6 +121,7 @@ CREATE POLICY catalog_photos_admin_delete_guard
 
 -- RLS does not protect TRUNCATE. Remove inherited table privileges on bookings,
 -- then restore only the customer/admin operations explicitly designed above.
+ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.bookings FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, DELETE ON TABLE public.bookings TO authenticated;
 GRANT UPDATE (status) ON TABLE public.bookings TO authenticated;
