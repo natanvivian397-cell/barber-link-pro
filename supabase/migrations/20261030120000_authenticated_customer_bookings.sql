@@ -15,14 +15,14 @@ CREATE OR REPLACE FUNCTION public.require_booking_user_on_insert()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = ''
-AS $
+AS $$
 BEGIN
   IF NEW.user_id IS NULL THEN
     RAISE EXCEPTION 'Todo novo agendamento precisa pertencer a uma conta autenticada';
   END IF;
   RETURN NEW;
 END;
-$;
+$$;
 
 DROP TRIGGER IF EXISTS bookings_require_user_id ON public.bookings;
 CREATE TRIGGER bookings_require_user_id
@@ -233,7 +233,7 @@ REVOKE ALL ON FUNCTION public.create_booking_for_device(uuid, text, text, uuid, 
 REVOKE ALL ON FUNCTION public.find_my_bookings_by_device(text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.claim_my_bookings_for_device(text, text, text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.cancel_my_booking_by_device(uuid, text) FROM PUBLIC, anon, authenticated;
-DO $
+DO $$
 BEGIN
   IF to_regprocedure('public.find_my_bookings(text,text)') IS NOT NULL THEN
     EXECUTE 'REVOKE ALL ON FUNCTION public.find_my_bookings(text, text) FROM PUBLIC, anon, authenticated';
@@ -241,7 +241,49 @@ BEGIN
   IF to_regprocedure('public.cancel_my_booking(uuid,text,text)') IS NOT NULL THEN
     EXECUTE 'REVOKE ALL ON FUNCTION public.cancel_my_booking(uuid, text, text) FROM PUBLIC, anon, authenticated';
   END IF;
-END $;
+END $$;
+
+
+-- Admin-only transfer endpoint. Direct table updates remain limited to status,
+-- so customers cannot change barber_id while cancelling their own booking.
+CREATE OR REPLACE FUNCTION public.transfer_booking_admin(
+  _booking_id uuid,
+  _barber_id uuid
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $
+BEGIN
+  IF lower(coalesce(auth.jwt() ->> 'email', '')) NOT IN (
+    'natanvivian39@gmail.com',
+    'douglasmachadodigao@gmail.com'
+  ) THEN
+    RAISE EXCEPTION 'Acesso não autorizado';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.barbers WHERE id = _barber_id AND active
+  ) THEN
+    RAISE EXCEPTION 'Escolha um barbeiro ativo';
+  END IF;
+
+  UPDATE public.bookings
+  SET barber_id = _barber_id
+  WHERE id = _booking_id
+    AND status NOT IN ('cancelado', 'concluido');
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Agendamento não encontrado ou não pode ser transferido';
+  END IF;
+
+  RETURN true;
+END;
+$;
+
+REVOKE ALL ON FUNCTION public.transfer_booking_admin(uuid, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.transfer_booking_admin(uuid, uuid) TO authenticated;
 
 -- Staff-created recurring reservations also record the authenticated creator.
 -- RLS still restricts this invoker function to the two authorized admin accounts.
@@ -270,7 +312,7 @@ BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Entre no painel';
   END IF;
-  IF length(trim(_name)) < 2 OR length(regexp_replace(_phone, '\\D', '', 'g')) < 10 THEN
+  IF length(trim(_name)) < 2 OR length(regexp_replace(_phone, '[^0-9]', '', 'g')) < 10 THEN
     RAISE EXCEPTION 'Informe nome e WhatsApp';
   END IF;
   IF _weekday NOT BETWEEN 0 AND 6
