@@ -58,7 +58,7 @@ export function FixedClients({ barberId, onSaved }: { barberId: string; onSaved:
     const grouped = new Map<string, FixedClientGroup>();
     for (const booking of fixedBookings) {
       const weekday = new Date(`${booking.booking_date}T12:00:00`).getDay();
-      const normalizedPhone = booking.customer_phone.replace(/\\D/g, "");
+      const normalizedPhone = booking.customer_phone.replace(/\D/g, "");
       const key = JSON.stringify([booking.customer_name.trim().toLocaleLowerCase(), normalizedPhone, booking.service_name, booking.booking_time, weekday]);
       const existing = grouped.get(key);
       if (existing) {
