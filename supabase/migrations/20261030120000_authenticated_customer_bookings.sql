@@ -212,5 +212,12 @@ REVOKE ALL ON FUNCTION public.create_booking_for_device(uuid, text, text, uuid, 
 REVOKE ALL ON FUNCTION public.find_my_bookings_by_device(text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.claim_my_bookings_for_device(text, text, text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.cancel_my_booking_by_device(uuid, text) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.find_my_bookings(text, text) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.cancel_my_booking(uuid, text, text) FROM PUBLIC, anon, authenticated;
+DO $
+BEGIN
+  IF to_regprocedure('public.find_my_bookings(text,text)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.find_my_bookings(text, text) FROM PUBLIC, anon, authenticated';
+  END IF;
+  IF to_regprocedure('public.cancel_my_booking(uuid,text,text)') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.cancel_my_booking(uuid, text, text) FROM PUBLIC, anon, authenticated';
+  END IF;
+END $;
