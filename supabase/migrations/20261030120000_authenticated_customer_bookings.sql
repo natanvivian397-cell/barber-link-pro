@@ -254,7 +254,7 @@ RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
-AS $
+AS $$
 BEGIN
   IF lower(coalesce(auth.jwt() ->> 'email', '')) NOT IN (
     'natanvivian39@gmail.com',
@@ -280,7 +280,7 @@ BEGIN
 
   RETURN true;
 END;
-$;
+$$;
 
 REVOKE ALL ON FUNCTION public.transfer_booking_admin(uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.transfer_booking_admin(uuid, uuid) TO authenticated;
