@@ -34,9 +34,10 @@ BEGIN
       LOOP
         EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', p.policyname, t);
       END LOOP;
-      EXECUTE format('REVOKE ALL ON TABLE public.%I FROM PUBLIC, anon', t);
+      -- Remove every inherited table privilege (including TRUNCATE, which bypasses RLS),
+      -- then grant only the operations the app actually needs.
+      EXECUTE format('REVOKE ALL ON TABLE public.%I FROM PUBLIC, anon, authenticated', t);
       EXECUTE format('GRANT SELECT ON TABLE public.%I TO anon, authenticated', t);
-      EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON TABLE public.%I FROM authenticated', t);
       EXECUTE format('GRANT INSERT, UPDATE, DELETE ON TABLE public.%I TO authenticated', t);
       EXECUTE format(
         'CREATE POLICY %I ON public.%I FOR SELECT TO anon, authenticated USING (true)',
@@ -62,9 +63,9 @@ BEGIN
     LOOP
       EXECUTE format('DROP POLICY IF EXISTS %I ON public.schedule_blocks', p.policyname);
     END LOOP;
-    REVOKE ALL ON TABLE public.schedule_blocks FROM PUBLIC;
+    -- TRUNCATE bypasses RLS, so revoke all inherited privileges before granting the minimum.
+    REVOKE ALL ON TABLE public.schedule_blocks FROM PUBLIC, anon, authenticated;
     GRANT SELECT ON TABLE public.schedule_blocks TO anon, authenticated;
-    REVOKE INSERT, UPDATE, DELETE ON TABLE public.schedule_blocks FROM anon, authenticated;
     GRANT INSERT, UPDATE, DELETE ON TABLE public.schedule_blocks TO authenticated;
     CREATE POLICY schedule_blocks_public_read
       ON public.schedule_blocks FOR SELECT TO anon, authenticated USING (true);
@@ -86,9 +87,9 @@ BEGIN
     LOOP
       EXECUTE format('DROP POLICY IF EXISTS %I ON public.booking_blocked_dates', p.policyname);
     END LOOP;
-    REVOKE ALL ON TABLE public.booking_blocked_dates FROM PUBLIC;
+    -- TRUNCATE bypasses RLS, so revoke all inherited privileges before granting the minimum.
+    REVOKE ALL ON TABLE public.booking_blocked_dates FROM PUBLIC, anon, authenticated;
     GRANT SELECT ON TABLE public.booking_blocked_dates TO anon, authenticated;
-    REVOKE INSERT, UPDATE, DELETE ON TABLE public.booking_blocked_dates FROM anon, authenticated;
     GRANT INSERT, UPDATE, DELETE ON TABLE public.booking_blocked_dates TO authenticated;
     CREATE POLICY booking_blocked_dates_public_read
       ON public.booking_blocked_dates FOR SELECT TO anon, authenticated USING (true);
@@ -117,6 +118,12 @@ DROP POLICY IF EXISTS catalog_photos_admin_delete_guard ON storage.objects;
 CREATE POLICY catalog_photos_admin_delete_guard
   ON storage.objects AS RESTRICTIVE FOR DELETE TO authenticated
   USING (bucket_id <> 'catalog-photos' OR public.is_barber_link_admin());
+
+-- RLS does not protect TRUNCATE. Remove inherited table privileges on bookings,
+-- then restore only the customer/admin operations explicitly designed above.
+REVOKE ALL ON TABLE public.bookings FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, DELETE ON TABLE public.bookings TO authenticated;
+GRANT UPDATE (status) ON TABLE public.bookings TO authenticated;
 
 -- Customer booking RPC: enforce the same 30-day horizon as the UI at the
 -- database boundary, not merely in browser code. Canonical service data is
