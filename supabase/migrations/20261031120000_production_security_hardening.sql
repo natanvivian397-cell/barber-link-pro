@@ -132,7 +132,7 @@ CREATE OR REPLACE FUNCTION public.prevent_booking_in_block()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = ''
-AS $
+AS $$
 DECLARE
   v_start integer;
 BEGIN
@@ -158,13 +158,13 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$$;
 
 CREATE OR REPLACE FUNCTION public.prevent_block_on_booking()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = ''
-AS $
+AS $$
 DECLARE
   v_start integer;
 BEGIN
@@ -187,9 +187,9 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$$;
 
-DO $
+DO $$
 BEGIN
   IF to_regclass('public.schedule_blocks') IS NOT NULL THEN
     DROP TRIGGER IF EXISTS bookings_reject_block ON public.bookings;
@@ -203,7 +203,7 @@ BEGIN
       FOR EACH ROW EXECUTE FUNCTION public.prevent_block_on_booking();
   END IF;
 END;
-$;
+$$;
 
 -- Customer booking RPC: enforce the same 30-day horizon as the UI at the
 -- database boundary, not merely in browser code. Canonical service data is
