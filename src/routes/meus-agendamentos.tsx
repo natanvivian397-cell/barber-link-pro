@@ -1,9 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, Clock3, Scissors, ArrowLeft, Loader2, Smartphone, XCircle } from "lucide-react";
+import { CalendarDays, Clock3, Scissors, ArrowLeft, Loader2, XCircle, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { getDeviceToken } from "@/lib/deviceIdentity";
 import { BrandHeader } from "@/components/BrandHeader";
 import { Button } from "@/components/ui/button";
 import { formatDateBR } from "@/lib/booking";
@@ -26,52 +25,85 @@ export const Route = createFileRoute("/meus-agendamentos")({
 });
 
 function MeusAgendamentos() {
-  const [deviceToken, setDeviceToken] = useState("");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [bookings, setBookings] = useState<Booking[] | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [claiming, setClaiming] = useState(false);
+  const [authBusy, setAuthBusy] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
-  async function loadDeviceBookings(token: string) {
-    const { data, error } = await supabase.rpc("find_my_bookings_by_device", {
-      _device_token: token,
-    });
-    if (error) {
-      toast.error("Não foi possível carregar seus agendamentos. Tente novamente.");
-      setBookings([]);
-      return;
-    }
-    setBookings((data ?? []) as Booking[]);
-  }
-
   useEffect(() => {
-    const token = getDeviceToken();
-    setDeviceToken(token);
-    if (!token) {
-      setLoading(false);
-      toast.error("Não foi possível reconhecer este dispositivo.");
-      return;
-    }
-    void loadDeviceBookings(token).finally(() => setLoading(false));
+    let mounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setUserId(data.session?.user.id ?? null);
+      if (!data.session) setLoading(false);
+    });
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user.id ?? null);
+    });
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
-  async function cancelBooking(booking: Booking) {
-    if (!deviceToken) {
-      toast.error("Este dispositivo ainda não pôde ser identificado.");
+  useEffect(() => {
+    if (!userId) {
+      setBookings([]);
+      setLoading(false);
       return;
     }
+    let active = true;
+    setLoading(true);
+    supabase
+      .from("bookings")
+      .select("id, service_name, booking_date, booking_time")
+      .eq("user_id", userId)
+      .not("status", "in", '("cancelado","concluido")')
+      .gte("booking_date", new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }))
+      .order("booking_date")
+      .order("booking_time")
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          toast.error("Não foi possível carregar seus agendamentos. Tente novamente.");
+          setBookings([]);
+        } else {
+          setBookings((data ?? []) as Booking[]);
+        }
+        setLoading(false);
+      });
+    return () => { active = false; };
+  }, [userId]);
+
+  async function signIn(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAuthBusy(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+    setAuthBusy(false);
+    if (error) toast.error("E-mail ou senha inválidos.");
+  }
+
+  async function cancelBooking(booking: Booking) {
     const confirmed = window.confirm(
       `Cancelar ${booking.service_name} em ${formatDateBR(booking.booking_date)} às ${booking.booking_time}?`
     );
     if (!confirmed) return;
 
     setCancellingId(booking.id);
-    const { data, error } = await supabase.rpc("cancel_my_booking_by_device", {
-      _booking_id: booking.id,
-      _device_token: deviceToken,
-    });
+    const { data, error } = await supabase
+      .from("bookings")
+      .update({ status: "cancelado" })
+      .eq("id", booking.id)
+      .eq("user_id", userId!)
+      .not("status", "in", '("cancelado","concluido")')
+      .select("id")
+      .maybeSingle();
     setCancellingId(null);
 
     if (error || !data) {
@@ -79,39 +111,7 @@ function MeusAgendamentos() {
       return;
     }
     toast.success("Agendamento cancelado.");
-    setBookings((current) => (current ?? []).filter((item) => item.id !== booking.id));
-  }
-
-  async function linkPreviousBookings(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (name.trim().length < 2 || phone.replace(/\D/g, "").length < 10) {
-      toast.error("Informe o nome e o WhatsApp usados no agendamento.");
-      return;
-    }
-    if (!deviceToken) {
-      toast.error("Este dispositivo ainda não pôde ser identificado.");
-      return;
-    }
-
-    setClaiming(true);
-    const { data, error } = await supabase.rpc("claim_my_bookings_for_device", {
-      _name: name.trim(),
-      _phone: phone.trim(),
-      _device_token: deviceToken,
-    });
-    if (error) {
-      setClaiming(false);
-      toast.error("Não foi possível vincular seus agendamentos. Tente novamente.");
-      return;
-    }
-
-    await loadDeviceBookings(deviceToken);
-    setClaiming(false);
-    if ((data ?? 0) > 0) {
-      toast.success("Pronto! Seus agendamentos foram vinculados a este dispositivo.");
-    } else {
-      toast.info("Não encontramos agendamentos futuros com esses dados.");
-    }
+    setBookings((current) => current.filter((item) => item.id !== booking.id));
   }
 
   return (
@@ -130,38 +130,64 @@ function MeusAgendamentos() {
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">Área do cliente</p>
           <h1 className="mt-3 text-3xl font-bold text-foreground sm:text-4xl">Meus agendamentos</h1>
           <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground">
-            Seus horários aparecem automaticamente quando você acessa pelo mesmo dispositivo usado para agendar.
+            Entre com a mesma conta usada para reservar. Seus horários ficam protegidos e vinculados ao seu usuário.
           </p>
         </div>
 
-        {loading ? (
+        {!userId ? (
+          <form onSubmit={signIn} className="mt-8 space-y-3 rounded-2xl border border-border bg-card p-5">
+            <h2 className="font-semibold text-foreground">Entrar na sua conta</h2>
+            <input
+              required
+              type="email"
+              autoComplete="email"
+              aria-label="E-mail"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="Seu e-mail"
+              className="w-full rounded-full border border-border bg-background px-5 py-3.5 text-sm outline-none focus:border-gold"
+            />
+            <input
+              required
+              type="password"
+              autoComplete="current-password"
+              aria-label="Senha"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Sua senha"
+              className="w-full rounded-full border border-border bg-background px-5 py-3.5 text-sm outline-none focus:border-gold"
+            />
+            <Button type="submit" disabled={authBusy} className="h-12 w-full gap-2 rounded-full bg-gold font-semibold text-gold-foreground">
+              {authBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {authBusy ? "Entrando..." : "Entrar"}
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              Ainda não tem conta? <Link to="/agendar" search={{ servico: undefined }} className="font-semibold text-gold">Crie ao confirmar seu próximo agendamento.</Link>
+            </p>
+          </form>
+        ) : loading ? (
           <div className="mt-8 flex items-center justify-center gap-3 rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin text-gold" /> Procurando seus agendamentos...
           </div>
-        ) : bookings && bookings.length > 0 ? (
+        ) : bookings.length > 0 ? (
           <section className="mt-8">
-            <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-              <Smartphone className="h-4 w-4 text-gold" /> Dispositivo reconhecido
+            <div className="mb-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
+              <span className="truncate">Conta conectada</span>
+              <button type="button" onClick={() => void supabase.auth.signOut()} className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-gold">
+                <LogOut className="h-4 w-4" /> Sair
+              </button>
             </div>
             <h2 className="text-xs font-semibold uppercase tracking-[0.25em] text-gold">Próximos horários</h2>
             <div className="mt-4 space-y-3">
               {bookings.map((booking) => (
                 <article key={booking.id} className="rounded-2xl border border-border bg-card p-5">
                   <div className="flex items-start gap-3">
-                    <div className="rounded-xl bg-gold/10 p-3 text-gold">
-                      <Scissors className="h-5 w-5" />
-                    </div>
+                    <div className="rounded-xl bg-gold/10 p-3 text-gold"><Scissors className="h-5 w-5" /></div>
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-foreground">{booking.service_name}</h3>
                       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                        <span className="inline-flex items-center gap-2">
-                          <CalendarDays className="h-4 w-4 text-gold" />
-                          {formatDateBR(booking.booking_date)}
-                        </span>
-                        <span className="inline-flex items-center gap-2">
-                          <Clock3 className="h-4 w-4 text-gold" />
-                          {booking.booking_time}
-                        </span>
+                        <span className="inline-flex items-center gap-2"><CalendarDays className="h-4 w-4 text-gold" />{formatDateBR(booking.booking_date)}</span>
+                        <span className="inline-flex items-center gap-2"><Clock3 className="h-4 w-4 text-gold" />{booking.booking_time}</span>
                       </div>
                       <Button
                         type="button"
@@ -180,59 +206,16 @@ function MeusAgendamentos() {
             </div>
           </section>
         ) : (
-          <section className="mt-8 rounded-2xl border border-border bg-card p-5">
-            <div className="text-center">
-              <Smartphone className="mx-auto h-8 w-8 text-gold" />
-              <h2 className="mt-3 font-semibold text-foreground">Nenhum agendamento vinculado a este dispositivo</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Os próximos agendamentos feitos neste dispositivo aparecerão aqui automaticamente. Se você já tinha uma reserva, vincule-a uma única vez abaixo.
-              </p>
-              <Link
-                to="/agendar"
-                search={{ servico: undefined }}
-                className="mt-5 inline-flex rounded-full bg-gold px-5 py-3 text-sm font-semibold text-gold-foreground"
-              >
-                Agendar um horário
-              </Link>
-            </div>
-
-            <form onSubmit={linkPreviousBookings} className="mt-7 space-y-3 border-t border-border pt-6">
-              <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">Já tinha um agendamento?</h3>
-              <p className="text-sm text-muted-foreground">
-                Preencha estes dados apenas uma vez para vincular suas reservas antigas a este dispositivo.
-              </p>
-              <label className="block">
-                <span className="mb-2 block text-xs font-medium text-muted-foreground">Nome usado na reserva</span>
-                <input
-                  aria-label="Nome usado no agendamento"
-                  autoComplete="name"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Seu nome (pode ser o primeiro nome)"
-                  className="w-full rounded-full border border-border bg-background px-5 py-3.5 text-sm text-foreground outline-none focus:border-gold"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-xs font-medium text-muted-foreground">WhatsApp usado na reserva</span>
-                <input
-                  aria-label="WhatsApp usado no agendamento"
-                  autoComplete="tel"
-                  inputMode="tel"
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  placeholder="(51) 9 9999-9999"
-                  className="w-full rounded-full border border-border bg-background px-5 py-3.5 text-sm text-foreground outline-none focus:border-gold"
-                />
-              </label>
-              <Button
-                type="submit"
-                disabled={claiming || loading}
-                className="h-12 w-full gap-2 rounded-full bg-gold font-semibold text-gold-foreground hover:bg-gold/90"
-              >
-                {claiming ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {claiming ? "Vinculando..." : "Vincular meus agendamentos"}
-              </Button>
-            </form>
+          <section className="mt-8 rounded-2xl border border-border bg-card p-6 text-center">
+            <CalendarDays className="mx-auto h-8 w-8 text-gold" />
+            <h2 className="mt-3 font-semibold text-foreground">Nenhum agendamento futuro</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Quando você confirmar uma reserva com esta conta, ela aparecerá aqui.</p>
+            <Link to="/agendar" search={{ servico: undefined }} className="mt-5 inline-flex rounded-full bg-gold px-5 py-3 text-sm font-semibold text-gold-foreground">
+              Agendar um horário
+            </Link>
+            <button type="button" onClick={() => void supabase.auth.signOut()} className="mx-auto mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+              <LogOut className="h-3.5 w-3.5" /> Sair da conta
+            </button>
           </section>
         )}
       </main>
