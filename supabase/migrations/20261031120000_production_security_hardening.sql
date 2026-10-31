@@ -125,6 +125,86 @@ REVOKE ALL ON TABLE public.bookings FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, DELETE ON TABLE public.bookings TO authenticated;
 GRANT UPDATE (status) ON TABLE public.bookings TO authenticated;
 
+-- Ensure manual schedule blocks are enforced by the database, not only by the UI.
+-- Recreate these guards here because the original definitions live in the legacy
+-- Drizzle migration and may not be present in every Lovable Cloud deployment.
+CREATE OR REPLACE FUNCTION public.prevent_booking_in_block()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $
+DECLARE
+  v_start integer;
+BEGIN
+  IF NEW.status = 'cancelado' OR NEW.barber_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  PERFORM pg_advisory_xact_lock(hashtext(NEW.barber_id::text || NEW.booking_date::text));
+  v_start := split_part(NEW.booking_time, ':', 1)::integer * 60
+           + split_part(NEW.booking_time, ':', 2)::integer;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.schedule_blocks AS sb
+    WHERE sb.barber_id = NEW.barber_id
+      AND sb.booking_date = NEW.booking_date
+      AND (split_part(sb.booking_time, ':', 1)::integer * 60
+           + split_part(sb.booking_time, ':', 2)::integer) < v_start + NEW.duration_min
+      AND (split_part(sb.booking_time, ':', 1)::integer * 60
+           + split_part(sb.booking_time, ':', 2)::integer) + sb.duration_min > v_start
+  ) THEN
+    RAISE EXCEPTION 'Horário bloqueado' USING ERRCODE = '23505';
+  END IF;
+  RETURN NEW;
+END;
+$;
+
+CREATE OR REPLACE FUNCTION public.prevent_block_on_booking()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $
+DECLARE
+  v_start integer;
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtext(NEW.barber_id::text || NEW.booking_date::text));
+  v_start := split_part(NEW.booking_time, ':', 1)::integer * 60
+           + split_part(NEW.booking_time, ':', 2)::integer;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.bookings AS b
+    WHERE b.barber_id = NEW.barber_id
+      AND b.booking_date = NEW.booking_date
+      AND b.status <> 'cancelado'
+      AND (split_part(b.booking_time, ':', 1)::integer * 60
+           + split_part(b.booking_time, ':', 2)::integer) < v_start + NEW.duration_min
+      AND (split_part(b.booking_time, ':', 1)::integer * 60
+           + split_part(b.booking_time, ':', 2)::integer) + b.duration_min > v_start
+  ) THEN
+    RAISE EXCEPTION 'Horário já agendado' USING ERRCODE = '23505';
+  END IF;
+  RETURN NEW;
+END;
+$;
+
+DO $
+BEGIN
+  IF to_regclass('public.schedule_blocks') IS NOT NULL THEN
+    DROP TRIGGER IF EXISTS bookings_reject_block ON public.bookings;
+    CREATE TRIGGER bookings_reject_block
+      BEFORE INSERT OR UPDATE ON public.bookings
+      FOR EACH ROW EXECUTE FUNCTION public.prevent_booking_in_block();
+
+    DROP TRIGGER IF EXISTS blocks_reject_bookings ON public.schedule_blocks;
+    CREATE TRIGGER blocks_reject_bookings
+      BEFORE INSERT OR UPDATE ON public.schedule_blocks
+      FOR EACH ROW EXECUTE FUNCTION public.prevent_block_on_booking();
+  END IF;
+END;
+$;
+
 -- Customer booking RPC: enforce the same 30-day horizon as the UI at the
 -- database boundary, not merely in browser code. Canonical service data is
 -- always loaded from the database; user_id always comes from auth.uid().
