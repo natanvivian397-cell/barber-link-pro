@@ -437,17 +437,38 @@ FOR EACH ROW EXECUTE FUNCTION public.prevent_recurring_holiday_booking();
 -- If the optional date-block migration is installed, narrow its legacy trigger
 -- to inserts and booking-date changes. Status-only updates (e.g. completing an
 -- older reservation) must remain possible even when its date is a closure.
-DO $$
+DO $
 BEGIN
   IF to_regclass('public.booking_blocked_dates') IS NOT NULL
      AND to_regprocedure('public.prevent_booking_on_blocked_date()') IS NOT NULL THEN
+    -- Recreate the legacy trigger function with a locked search_path and a
+    -- schema-qualified table reference so temporary objects cannot shadow it.
+    EXECUTE $ddl$
+      CREATE OR REPLACE FUNCTION public.prevent_booking_on_blocked_date()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      SET search_path = ''
+      AS $fn$
+      BEGIN
+        IF EXISTS (
+          SELECT 1
+          FROM public.booking_blocked_dates AS d
+          WHERE d.blocked_date = NEW.booking_date
+        ) THEN
+          RAISE EXCEPTION 'Barbearia fechada nesta data' USING ERRCODE = '23505';
+        END IF;
+        RETURN NEW;
+      END;
+      $fn$;
+    $ddl$;
+
     DROP TRIGGER IF EXISTS bookings_reject_blocked_dates ON public.bookings;
     CREATE TRIGGER bookings_reject_blocked_dates
       BEFORE INSERT OR UPDATE OF booking_date ON public.bookings
       FOR EACH ROW EXECUTE FUNCTION public.prevent_booking_on_blocked_date();
   END IF;
 END;
-$$;
+$;
 
 -- Explicitly preserve the admin allowlist on Storage write policies.
 DROP POLICY IF EXISTS "Staff can upload catalog photos" ON storage.objects;
