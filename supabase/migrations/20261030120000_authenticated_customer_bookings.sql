@@ -23,7 +23,9 @@ BEGIN
 END $$;
 
 REVOKE ALL ON TABLE public.bookings FROM anon;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.bookings TO authenticated;
+GRANT SELECT, INSERT, DELETE ON TABLE public.bookings TO authenticated;
+REVOKE UPDATE ON TABLE public.bookings FROM authenticated;
+GRANT UPDATE (status) ON TABLE public.bookings TO authenticated;
 
 CREATE POLICY bookings_select_owner_or_admin
 ON public.bookings FOR SELECT TO authenticated
@@ -35,11 +37,10 @@ USING (
   )
 );
 
-CREATE POLICY bookings_insert_owner_or_admin
+CREATE POLICY bookings_insert_admin_only
 ON public.bookings FOR INSERT TO authenticated
 WITH CHECK (
-  user_id = (SELECT auth.uid())
-  OR lower(coalesce(auth.jwt() ->> 'email', '')) IN (
+  lower(coalesce(auth.jwt() ->> 'email', '')) IN (
     'natanvivian39@gmail.com',
     'douglasmachadodigao@gmail.com'
   )
@@ -55,18 +56,17 @@ USING (
   )
 )
 WITH CHECK (
-  user_id = (SELECT auth.uid())
+  (user_id = (SELECT auth.uid()) AND status = 'cancelado')
   OR lower(coalesce(auth.jwt() ->> 'email', '')) IN (
     'natanvivian39@gmail.com',
     'douglasmachadodigao@gmail.com'
   )
 );
 
-CREATE POLICY bookings_delete_owner_or_admin
+CREATE POLICY bookings_delete_admin_only
 ON public.bookings FOR DELETE TO authenticated
 USING (
-  user_id = (SELECT auth.uid())
-  OR lower(coalesce(auth.jwt() ->> 'email', '')) IN (
+  lower(coalesce(auth.jwt() ->> 'email', '')) IN (
     'natanvivian39@gmail.com',
     'douglasmachadodigao@gmail.com'
   )
