@@ -252,7 +252,7 @@ function Agendar() {
 
     setSaving(true);
 
-    let { data: sessionData } = await supabase.auth.getSession();
+    const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData.session) {
       if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) {
         setSaving(false);
@@ -278,7 +278,6 @@ function Agendar() {
             : "Não foi possível criar sua conta. Confira os dados e tente novamente.");
           return;
         }
-        sessionData = { session: data.session, user: data.user } as typeof sessionData;
         if (!data.session) {
           setSaving(false);
           toast.info("Conta criada. Confirme seu e-mail pelo link enviado e depois entre para concluir o agendamento.");
@@ -295,7 +294,6 @@ function Agendar() {
           toast.error("E-mail ou senha inválidos. Tente novamente.");
           return;
         }
-        sessionData = { session: data.session, user: data.user } as typeof sessionData;
       }
     }
 
