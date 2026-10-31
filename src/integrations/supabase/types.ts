@@ -56,6 +56,7 @@ export type Database = {
           service_id: string | null
           service_name: string
           status: string
+          user_id: string | null
         }
         Insert: {
           barber_id?: string | null
@@ -71,6 +72,7 @@ export type Database = {
           service_id?: string | null
           service_name: string
           status?: string
+          user_id?: string | null
         }
         Update: {
           barber_id?: string | null
@@ -86,6 +88,7 @@ export type Database = {
           service_id?: string | null
           service_name?: string
           status?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -242,37 +245,21 @@ export type Database = {
           service_name: string
         }[]
       },
-      create_booking_for_device: {
+      create_booking_authenticated: {
         Args: {
           _barber_id: string
           _booking_date: string
           _booking_time: string
           _customer_name: string
           _customer_phone: string
-          _device_token: string
-          _notes: string | null
-          _price: number
+          _notes?: string | null
           _service_id: string
-          _service_name: string
         }
         Returns: string
-      },
-      find_my_bookings_by_device: {
-        Args: { _device_token: string }
-        Returns: {
-          booking_date: string
-          booking_time: string
-          id: string
-          service_name: string
-        }[]
-      },
-      claim_my_bookings_for_device: {
-        Args: { _device_token: string; _name: string; _phone: string }
-        Returns: number
-      },
-      cancel_my_booking_by_device: {
-        Args: { _booking_id: string; _device_token: string }
-        Returns: boolean
+      }
+      get_public_booking_slots: {
+        Args: { _barber_id: string; _booking_date: string }
+        Returns: { booking_time: string; duration_min: number }[]
       }
     }
     Enums: {
