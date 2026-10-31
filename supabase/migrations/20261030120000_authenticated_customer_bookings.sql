@@ -8,6 +8,27 @@ CREATE INDEX IF NOT EXISTS bookings_user_id_date_idx
 
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 
+
+-- Enforce ownership for every new insert, including future RPCs or server-side paths.
+-- Existing historical rows are untouched; account deletion may still SET NULL later.
+CREATE OR REPLACE FUNCTION public.require_booking_user_on_insert()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $
+BEGIN
+  IF NEW.user_id IS NULL THEN
+    RAISE EXCEPTION 'Todo novo agendamento precisa pertencer a uma conta autenticada';
+  END IF;
+  RETURN NEW;
+END;
+$;
+
+DROP TRIGGER IF EXISTS bookings_require_user_id ON public.bookings;
+CREATE TRIGGER bookings_require_user_id
+BEFORE INSERT ON public.bookings
+FOR EACH ROW EXECUTE FUNCTION public.require_booking_user_on_insert();
+
 -- Replace every pre-existing bookings policy so permissive legacy policies cannot
 -- accidentally OR-bypass the owner/admin boundary.
 DO $$
