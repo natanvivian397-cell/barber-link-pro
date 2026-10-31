@@ -692,7 +692,10 @@ function Panel() {
 
   async function transfer(b: Booking, to: string) {
     if (!to) return;
-    const { error } = await supabase.from("bookings").update({ barber_id: to }).eq("id", b.id);
+    const { error } = await supabase.rpc("transfer_booking_admin", {
+      _booking_id: b.id,
+      _barber_id: to,
+    });
     if (error) {
       toast.error(
         error.code === "23505"
