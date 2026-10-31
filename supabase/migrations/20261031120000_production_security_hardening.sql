@@ -126,6 +126,60 @@ REVOKE ALL ON TABLE public.bookings FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, DELETE ON TABLE public.bookings TO authenticated;
 GRANT UPDATE (status) ON TABLE public.bookings TO authenticated;
 
+-- Harden the legacy overlap trigger against temporary-schema shadowing.
+-- Its previous search_path=public and unqualified table names could let a caller
+-- hide rows from the overlap check with session-local temporary tables.
+CREATE OR REPLACE FUNCTION public.bookings_prevent_overlap()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $
+DECLARE
+  v_start integer;
+  v_end integer;
+BEGIN
+  IF TG_OP = 'INSERT' AND NEW.service_id IS NOT NULL THEN
+    SELECT duration_min INTO NEW.duration_min
+    FROM public.services
+    WHERE id = NEW.service_id;
+    NEW.duration_min := coalesce(NEW.duration_min, 30);
+  END IF;
+
+  IF NEW.status = 'cancelado' OR NEW.barber_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  v_start := pg_catalog.split_part(NEW.booking_time, ':', 1)::integer * 60
+           + pg_catalog.split_part(NEW.booking_time, ':', 2)::integer;
+  v_end := v_start + NEW.duration_min;
+
+  PERFORM pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtext(NEW.barber_id::text || NEW.booking_date::text)
+  );
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.bookings AS b
+    WHERE b.barber_id = NEW.barber_id
+      AND b.booking_date = NEW.booking_date
+      AND b.status <> 'cancelado'
+      AND b.id <> NEW.id
+      AND (
+        pg_catalog.split_part(b.booking_time, ':', 1)::integer * 60
+        + pg_catalog.split_part(b.booking_time, ':', 2)::integer
+      ) < v_end
+      AND (
+        pg_catalog.split_part(b.booking_time, ':', 1)::integer * 60
+        + pg_catalog.split_part(b.booking_time, ':', 2)::integer
+      ) + b.duration_min > v_start
+  ) THEN
+    RAISE EXCEPTION 'Horário ocupado' USING ERRCODE = '23505';
+  END IF;
+
+  RETURN NEW;
+END;
+$;
+
 -- Ensure manual schedule blocks are enforced by the database, not only by the UI.
 -- Recreate these guards here because the original definitions live in the legacy
 -- Drizzle migration and may not be present in every Lovable Cloud deployment.
