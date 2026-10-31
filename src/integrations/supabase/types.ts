@@ -260,6 +260,10 @@ export type Database = {
       get_public_booking_slots: {
         Args: { _barber_id: string; _booking_date: string }
         Returns: { booking_time: string; duration_min: number }[]
+      },
+      transfer_booking_admin: {
+        Args: { _booking_id: string; _barber_id: string }
+        Returns: boolean
       }
     }
     Enums: {
