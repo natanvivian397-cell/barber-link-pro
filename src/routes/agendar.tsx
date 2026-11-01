@@ -427,7 +427,10 @@ function Agendar() {
         <section className="mt-11 space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">5. &nbsp; Seus dados</h2>
           <input aria-label="Seu nome" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" className="w-full rounded-full border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-gold" />
-          <input aria-label="WhatsApp" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="WhatsApp (51) 9 9999-9999" className="w-full rounded-full border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-gold" />
+          <input aria-label="WhatsApp" value={phone} onChange={(e) => {
+            const d = e.target.value.replace(/\D/g, "").slice(0, 11);
+            setPhone(d.length <= 2 ? (d ? `(${d}` : "") : d.length <= 7 ? `(${d.slice(0, 2)}) ${d.slice(2)}` : `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`);
+          }} inputMode="tel" placeholder="WhatsApp (51) 99999-9999" className="w-full rounded-full border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-gold" />
           {authenticatedEmail ? (
             <p className="rounded-2xl border border-gold/30 bg-gold/5 px-4 py-3 text-sm text-foreground">
               Conta conectada: <strong>{authenticatedEmail}</strong>
@@ -442,7 +445,10 @@ function Agendar() {
                 <button type="button" onClick={() => setAuthMode("signup")} className={`rounded-full px-3 py-2 text-xs font-semibold ${authMode === "signup" ? "bg-gold text-gold-foreground" : "border border-border text-muted-foreground"}`}>Criar conta</button>
                 <button type="button" onClick={() => setAuthMode("login")} className={`rounded-full px-3 py-2 text-xs font-semibold ${authMode === "login" ? "bg-gold text-gold-foreground" : "border border-border text-muted-foreground"}`}>Já tenho conta</button>
               </div>
-              <input aria-label="E-mail" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Seu e-mail" className="w-full rounded-full border border-border bg-background px-5 py-3.5 text-sm outline-none focus:border-gold" />
+              <input aria-label="E-mail" type="email" autoComplete="email" value={email} onChange={(e) => {
+                const v = e.target.value.replace(/\s/g, "");
+                setEmail(v.endsWith("@") && !email.includes("@") && v.length > email.length ? `${v}gmail.com` : v);
+              }} onBlur={() => { if (email && !email.includes("@")) setEmail(`${email}@gmail.com`); }} placeholder="Seu e-mail" className="w-full rounded-full border border-border bg-background px-5 py-3.5 text-sm outline-none focus:border-gold" />
               <input aria-label="Senha" type="password" autoComplete={authMode === "signup" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha (mínimo 8 caracteres)" className="w-full rounded-full border border-border bg-background px-5 py-3.5 text-sm outline-none focus:border-gold" />
             </div>
           )}
