@@ -427,7 +427,10 @@ function Agendar() {
         <section className="mt-11 space-y-3">
           <h2 className="text-xs font-semibold uppercase tracking-[0.28em] text-gold">5. &nbsp; Seus dados</h2>
           <input aria-label="Seu nome" value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" className="w-full rounded-full border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-gold" />
-          <input aria-label="WhatsApp" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="WhatsApp (51) 9 9999-9999" className="w-full rounded-full border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-gold" />
+          <input aria-label="WhatsApp" value={phone} onChange={(e) => {
+            const d = e.target.value.replace(/\D/g, "").slice(0, 11);
+            setPhone(d.length <= 2 ? (d ? `(${d}` : "") : d.length <= 7 ? `(${d.slice(0, 2)}) ${d.slice(2)}` : `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`);
+          }} inputMode="tel" placeholder="WhatsApp (51) 99999-9999" className="w-full rounded-full border border-border bg-card px-5 py-3.5 text-sm outline-none focus:border-gold" />
           {authenticatedEmail ? (
             <p className="rounded-2xl border border-gold/30 bg-gold/5 px-4 py-3 text-sm text-foreground">
               Conta conectada: <strong>{authenticatedEmail}</strong>
