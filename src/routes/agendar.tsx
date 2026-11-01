@@ -27,10 +27,10 @@ import {
 type SearchParams = { servico: string | undefined };
 
 function slotOverlapsBooking(slot: string, duration: number, bookings: Taken[]) {
-  const [hour, minute] = slot.split(":").map(Number);
+  const [hour = 0, minute = 0] = slot.split(":").map(Number);
   const start = hour * 60 + minute;
   return bookings.some((booking) => {
-    const [bookingHour, bookingMinute] = booking.booking_time.split(":").map(Number);
+    const [bookingHour = 0, bookingMinute = 0] = booking.booking_time.split(":").map(Number);
     const bookingStart = bookingHour * 60 + bookingMinute;
     return bookingStart < start + duration && bookingStart + (booking.duration_min || 30) > start;
   });
@@ -314,7 +314,7 @@ function Agendar() {
       _service_id: selected.id,
       _booking_date: date,
       _booking_time: time,
-      _notes: notes.trim() || null,
+      ...(notes.trim() ? { _notes: notes.trim() } : {}),
     });
     setSaving(false);
 
