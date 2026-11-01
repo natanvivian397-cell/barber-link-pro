@@ -41,6 +41,53 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_device_access: {
+        Row: {
+          booking_id: string
+          created_at: string
+          device_token: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          device_token: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          device_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_device_access_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_rate_limits: {
+        Row: {
+          updated_at: string
+          user_id: string
+          window_count: number
+          window_started_at: string
+        }
+        Insert: {
+          updated_at?: string
+          user_id: string
+          window_count?: number
+          window_started_at?: string
+        }
+        Update: {
+          updated_at?: string
+          user_id?: string
+          window_count?: number
+          window_started_at?: string
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           barber_id: string | null
@@ -141,9 +188,9 @@ export type Database = {
       }
       schedule_settings: {
         Row: {
-          barber_id: string
           afternoon_end: string
           afternoon_start: string
+          barber_id: string
           created_at: string
           is_open: boolean
           morning_end: string
@@ -153,9 +200,9 @@ export type Database = {
           weekday: number
         }
         Insert: {
-          barber_id: string
           afternoon_end?: string
           afternoon_start?: string
+          barber_id: string
           created_at?: string
           is_open?: boolean
           morning_end?: string
@@ -165,9 +212,9 @@ export type Database = {
           weekday: number
         }
         Update: {
-          barber_id?: string
           afternoon_end?: string
           afternoon_start?: string
+          barber_id?: string
           created_at?: string
           is_open?: boolean
           morning_end?: string
@@ -176,7 +223,15 @@ export type Database = {
           updated_at?: string
           weekday?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "schedule_settings_barber_id_fkey"
+            columns: ["barber_id"]
+            isOneToOne: false
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       services: {
         Row: {
@@ -236,6 +291,41 @@ export type Database = {
         Args: { _id: string; _name: string; _phone: string }
         Returns: boolean
       }
+      cancel_my_booking_by_device: {
+        Args: { _booking_id: string; _device_token: string }
+        Returns: boolean
+      }
+      claim_my_bookings_for_device: {
+        Args: { _device_token: string; _name: string; _phone: string }
+        Returns: number
+      }
+      create_booking_authenticated: {
+        Args: {
+          _barber_id: string
+          _booking_date: string
+          _booking_time: string
+          _customer_name: string
+          _customer_phone: string
+          _notes?: string
+          _service_id: string
+        }
+        Returns: string
+      }
+      create_booking_for_device: {
+        Args: {
+          _barber_id: string
+          _booking_date: string
+          _booking_time: string
+          _customer_name: string
+          _customer_phone: string
+          _device_token: string
+          _notes: string
+          _price: number
+          _service_id: string
+          _service_name: string
+        }
+        Returns: string
+      }
       find_my_bookings: {
         Args: { _name: string; _phone: string }
         Returns: {
@@ -244,25 +334,26 @@ export type Database = {
           id: string
           service_name: string
         }[]
-      },
-      create_booking_authenticated: {
-        Args: {
-          _barber_id: string
-          _booking_date: string
-          _booking_time: string
-          _customer_name: string
-          _customer_phone: string
-          _notes?: string | null
-          _service_id: string
-        }
-        Returns: string
+      }
+      find_my_bookings_by_device: {
+        Args: { _device_token: string }
+        Returns: {
+          booking_date: string
+          booking_time: string
+          id: string
+          service_name: string
+        }[]
       }
       get_public_booking_slots: {
         Args: { _barber_id: string; _booking_date: string }
-        Returns: { booking_time: string; duration_min: number }[]
-      },
+        Returns: {
+          booking_time: string
+          duration_min: number
+        }[]
+      }
+      is_barber_link_admin: { Args: never; Returns: boolean }
       transfer_booking_admin: {
-        Args: { _booking_id: string; _barber_id: string }
+        Args: { _barber_id: string; _booking_id: string }
         Returns: boolean
       }
     }

@@ -273,9 +273,19 @@ function Agendar() {
         });
         if (error) {
           setSaving(false);
-          toast.error(error.message.toLowerCase().includes("already registered")
-            ? "Este e-mail já possui uma conta. Selecione Entrar."
-            : "Não foi possível criar sua conta. Confira os dados e tente novamente.");
+          const code = (error as { code?: string }).code ?? "";
+          const msg = error.message.toLowerCase();
+          toast.error(
+            code === "weak_password" || msg.includes("weak")
+              ? "Essa senha é muito comum e fácil de adivinhar. Crie uma senha diferente, misturando letras e números."
+              : code === "user_already_exists" || msg.includes("already registered")
+                ? "Este e-mail já possui uma conta. Selecione Já tenho conta."
+                : code === "email_address_invalid" || msg.includes("invalid")
+                  ? "Este e-mail não é válido. Confira e tente novamente."
+                  : code.includes("rate_limit") || error.status === 429
+                    ? "Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente de novo."
+                    : "Não foi possível criar sua conta. Confira os dados e tente novamente.",
+          );
           return;
         }
         if (!data.session) {
