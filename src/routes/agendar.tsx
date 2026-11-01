@@ -314,7 +314,7 @@ function Agendar() {
       _service_id: selected.id,
       _booking_date: date,
       _booking_time: time,
-      _notes: notes.trim() || undefined,
+      ...(notes.trim() ? { _notes: notes.trim() } : {}),
     });
     setSaving(false);
 
