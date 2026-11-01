@@ -445,7 +445,10 @@ function Agendar() {
                 <button type="button" onClick={() => setAuthMode("signup")} className={`rounded-full px-3 py-2 text-xs font-semibold ${authMode === "signup" ? "bg-gold text-gold-foreground" : "border border-border text-muted-foreground"}`}>Criar conta</button>
                 <button type="button" onClick={() => setAuthMode("login")} className={`rounded-full px-3 py-2 text-xs font-semibold ${authMode === "login" ? "bg-gold text-gold-foreground" : "border border-border text-muted-foreground"}`}>Já tenho conta</button>
               </div>
-              <input aria-label="E-mail" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Seu e-mail" className="w-full rounded-full border border-border bg-background px-5 py-3.5 text-sm outline-none focus:border-gold" />
+              <input aria-label="E-mail" type="email" autoComplete="email" value={email} onChange={(e) => {
+                const v = e.target.value.replace(/\s/g, "");
+                setEmail(v.endsWith("@") && !email.includes("@") && v.length > email.length ? `${v}gmail.com` : v);
+              }} onBlur={() => { if (email && !email.includes("@")) setEmail(`${email}@gmail.com`); }} placeholder="Seu e-mail" className="w-full rounded-full border border-border bg-background px-5 py-3.5 text-sm outline-none focus:border-gold" />
               <input aria-label="Senha" type="password" autoComplete={authMode === "signup" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha (mínimo 8 caracteres)" className="w-full rounded-full border border-border bg-background px-5 py-3.5 text-sm outline-none focus:border-gold" />
             </div>
           )}
