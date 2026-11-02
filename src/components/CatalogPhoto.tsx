@@ -23,7 +23,7 @@ function loadPhotoUrl(path: string) {
       // Visitors: the server signs only photos in use by an active service or barber.
       try {
         const { url } = await getCatalogPhotoUrl({ data: { path } });
-        if (url) return `${import.meta.env.VITE_SUPABASE_URL}${url}`;
+        if (url) return `${import.meta.env['VITE_SUPABASE_URL']}${url}`;
       } catch {
         // fall through to the staff path
       }
