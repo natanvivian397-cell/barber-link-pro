@@ -82,8 +82,10 @@ function Agendar() {
     const applySession = (session: { user: { email?: string; user_metadata?: Record<string, unknown> } } | null) => {
       setAuthenticatedEmail(session?.user.email ?? null);
       const meta = session?.user.user_metadata ?? {};
-      if (typeof meta.full_name === "string") setName((v) => v || (meta.full_name as string));
-      if (typeof meta.phone === "string") setPhone((v) => v || (meta.phone as string));
+      const savedName = meta["full_name"];
+      const savedPhone = meta["phone"];
+      if (typeof savedName === "string") setName((v) => v || savedName);
+      if (typeof savedPhone === "string") setPhone((v) => v || savedPhone);
     };
     supabase.auth.getSession().then(({ data }) => {
       if (mounted) applySession(data.session);
