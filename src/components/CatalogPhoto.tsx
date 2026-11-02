@@ -3,6 +3,7 @@ import { ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { getCatalogPhotoUrl } from "@/lib/catalog-photos.functions";
 
 const BUCKET = "catalog-photos";
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
@@ -13,14 +14,37 @@ const ALLOWED_PHOTO_TYPES: Record<string, string> = {
   "image/avif": "avif",
 };
 
+const urlCache = new Map<string, Promise<string | undefined>>();
+
+function loadPhotoUrl(path: string) {
+  let pending = urlCache.get(path);
+  if (!pending) {
+    pending = (async () => {
+      // Visitors: the server signs only photos in use by an active service or barber.
+      try {
+        const { url } = await getCatalogPhotoUrl({ data: { path } });
+        if (url) return `${import.meta.env['VITE_SUPABASE_URL']}${url}`;
+      } catch {
+        // fall through to the staff path
+      }
+      // Staff: storage rules allow admins to read every catalog photo.
+      const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, 3600);
+      return data?.signedUrl;
+    })();
+    urlCache.set(path, pending);
+    pending.then((u) => { if (!u) urlCache.delete(path); });
+  }
+  return pending;
+}
+
 export function CatalogPhoto({ path, alt, className = "" }: { path: string | null; alt: string; className?: string }) {
   const [url, setUrl] = useState<string>();
   useEffect(() => {
     let current = true;
     setUrl(undefined);
     if (path) {
-      supabase.storage.from(BUCKET).createSignedUrl(path, 3600).then(({ data }) => {
-        if (current) setUrl(data?.signedUrl);
+      loadPhotoUrl(path).then((u) => {
+        if (current) setUrl(u);
       });
     }
     return () => { current = false; };
