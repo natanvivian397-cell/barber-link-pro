@@ -36,6 +36,13 @@
       "when": 1793582106731,
       "tag": "0004_scope_public_catalog_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793582769592,
+      "tag": "0005_catalog_photos_server_signed",
+      "breakpoints": true
     }
   ]
 }
