@@ -78,11 +78,18 @@ function Agendar() {
 
   useEffect(() => {
     let mounted = true;
+    // Session stays saved on this device; also refill the customer's name and WhatsApp.
+    const applySession = (session: { user: { email?: string; user_metadata?: Record<string, unknown> } } | null) => {
+      setAuthenticatedEmail(session?.user.email ?? null);
+      const meta = session?.user.user_metadata ?? {};
+      if (typeof meta.full_name === "string") setName((v) => v || (meta.full_name as string));
+      if (typeof meta.phone === "string") setPhone((v) => v || (meta.phone as string));
+    };
     supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setAuthenticatedEmail(data.session?.user.email ?? null);
+      if (mounted) applySession(data.session);
     });
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthenticatedEmail(session?.user.email ?? null);
+      applySession(session);
     });
     return () => {
       mounted = false;
