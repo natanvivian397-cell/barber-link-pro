@@ -29,6 +29,13 @@
       "when": 1792265640186,
       "tag": "0003_weekly_fixed_client_booking",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793582106731,
+      "tag": "0004_scope_public_catalog_reads",
+      "breakpoints": true
     }
   ]
 }
