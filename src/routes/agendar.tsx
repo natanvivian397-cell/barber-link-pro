@@ -262,10 +262,10 @@ function Agendar() {
     setSaving(true);
 
     const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) {
-      if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) {
+    if (!sessionData.session && (email.trim() || password)) {
+      if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
         setSaving(false);
-        toast.error("Informe um e-mail válido para proteger seus agendamentos.");
+        toast.error("Informe um e-mail válido ou deixe e-mail e senha em branco para agendar sem conta.");
         return;
       }
       if (password.length < 8) {
@@ -447,8 +447,8 @@ function Agendar() {
           ) : (
             <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
               <div>
-                <p className="text-sm font-semibold text-foreground">Proteja seus agendamentos</p>
-                <p className="mt-1 text-xs text-muted-foreground">Crie uma conta rápida ou entre para consultar e cancelar suas reservas com segurança.</p>
+                <p className="text-sm font-semibold text-foreground">Conta (opcional)</p>
+                <p className="mt-1 text-xs text-muted-foreground">Pode agendar sem conta, deixando em branco. Só com conta você acompanha e cancela seus horários.</p>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => setAuthMode("signup")} className={`rounded-full px-3 py-2 text-xs font-semibold ${authMode === "signup" ? "bg-gold text-gold-foreground" : "border border-border text-muted-foreground"}`}>Criar conta</button>
