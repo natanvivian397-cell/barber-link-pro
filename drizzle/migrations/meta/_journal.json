@@ -43,6 +43,13 @@
       "when": 1793582769592,
       "tag": "0005_catalog_photos_server_signed",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793722881540,
+      "tag": "0006_optional_account_booking",
+      "breakpoints": true
     }
   ]
 }
