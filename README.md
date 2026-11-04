@@ -1,6 +1,6 @@
 # Barber Link Pro
 
-Crie um app de agendamento em tempo real pelo link para minha barbearia tudo que for agendado pelo link aparece automaticamente no /admin. Use o logo the brother barber, inspirasse no design assima
+
 
 This project was built with [Lovable](https://lovable.dev).
 
