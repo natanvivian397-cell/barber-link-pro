@@ -812,7 +812,7 @@ function Panel() {
             ? "JUNIOR"
             : null;
         if (!ownBarberName) return b.barber_id === barberId;
-        const ownBarber = barbers.find((barber) => barber.name.trim().toUpperCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "") === ownBarberName);
+        const ownBarber = barbers.find((barber) => barber.name.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === ownBarberName);
         return !!ownBarber && b.barber_id === ownBarber.id;
       })} /> : null}
       {tab === "horarios" ? <ScheduleEditor barberId={barberId} /> : null}
