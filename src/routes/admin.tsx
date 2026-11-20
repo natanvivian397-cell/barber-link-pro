@@ -624,6 +624,13 @@ function Panel() {
   const [day, setDay] = useState<string | null>(todayISO());
   const [tab, setTab] = useState<"agenda" | "financeiro" | "servicos" | "horarios" | "barbeiros" | "fixos">("agenda");
   const [loading, setLoading] = useState(true);
+  const [signedInEmail, setSignedInEmail] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setSignedInEmail(data.user?.email?.trim().toLowerCase() ?? "");
+    });
+  }, []);
 
   async function load() {
     const { data, error } = await supabase
@@ -798,7 +805,16 @@ function Panel() {
         ))}
       </div>
 
-      {tab === "financeiro" ? <Financeiro bookings={bookings.filter((b) => b.barber_id === barberId)} /> : null}
+      {tab === "financeiro" ? <Financeiro bookings={bookings.filter((b) => {
+        const ownBarberName = signedInEmail === "douglasmachadodigao@gmail.com"
+          ? "DOUGLAS"
+          : signedInEmail === "juniorjosias2018@gmail.com"
+            ? "JUNIOR"
+            : null;
+        if (!ownBarberName) return b.barber_id === barberId;
+        const ownBarber = barbers.find((barber) => barber.name.trim().toUpperCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "") === ownBarberName);
+        return !!ownBarber && b.barber_id === ownBarber.id;
+      })} /> : null}
       {tab === "horarios" ? <ScheduleEditor barberId={barberId} /> : null}
       {tab === "horarios" ? <InstallApp /> : null}
       {tab === "barbeiros" ? <BarbersEditor barbers={barbers} reload={loadBarbers} /> : null}
